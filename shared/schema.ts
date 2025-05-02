@@ -110,7 +110,10 @@ export const insertLoanGroupSchema = createInsertSchema(loanGroups)
 
 // Schema for individual loan items (used internally)
 export const insertLoanSchema = createInsertSchema(loans)
-  .omit({ id: true, actualReturnDate: true, status: true });
+  .omit({ id: true, actualReturnDate: true, status: true })
+  .extend({
+    loanGroupId: z.number().optional(), // Make loanGroupId optional for individual loans
+  });
 
 // Document Model
 export const documents = pgTable("documents", {
