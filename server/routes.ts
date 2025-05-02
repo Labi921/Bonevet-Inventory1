@@ -460,7 +460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: "Create",
         entityType: "Loan",
         entityId: loan.id.toString(),
-        details: `Created loan for: ${item.name} (${item.itemId}) to ${loan.borrowerName}`
+        details: `Created loan for: ${item.name} (${item.itemId}) to ${req.body.borrowerName || 'Borrower'}`
       });
       
       res.status(201).json(loan);

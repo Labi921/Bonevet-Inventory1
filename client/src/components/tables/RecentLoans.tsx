@@ -17,17 +17,17 @@ import {
 } from '@/components/ui/table';
 
 export default function RecentLoans() {
-  const { data: loans, isLoading } = useQuery({
+  const { data: loans = [], isLoading } = useQuery({
     queryKey: ['/api/loans/recent?limit=3'],
   });
 
-  const { data: inventory } = useQuery({
+  const { data: inventory = [] } = useQuery({
     queryKey: ['/api/inventory'],
   });
 
   const getItemName = (itemId: number) => {
-    if (!inventory) return 'Loading...';
-    const item = Array.isArray(inventory) ? inventory.find((item: any) => item.id === itemId) : null;
+    if (!Array.isArray(inventory)) return 'Loading...';
+    const item = inventory.find((item: any) => item.id === itemId);
     return item ? `${item.itemId} - ${item.name}` : `Item #${itemId}`;
   };
 
@@ -93,7 +93,7 @@ export default function RecentLoans() {
                     </TableCell>
                   </TableRow>
                 ))
-              ) : loans && Array.isArray(loans) && loans.length > 0 ? (
+              ) : Array.isArray(loans) && loans.length > 0 ? (
                 loans.map((loan: any) => (
                   <TableRow key={loan.id}>
                     <TableCell className="whitespace-nowrap">
