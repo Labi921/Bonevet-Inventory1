@@ -95,9 +95,15 @@ export const loans = pgTable("loans", {
   id: serial("id").primaryKey(),
   loanGroupId: integer("loan_group_id"), // Reference to loan_groups.id, made optional
   itemId: integer("item_id").notNull(),
+  borrowerName: text("borrower_name"), // For individual loans (not in a group)
+  borrowerType: text("borrower_type"), // Staff, Student, Other Organization, etc.
+  borrowerContact: text("borrower_contact"),
+  loanDate: timestamp("loan_date"), // Date when the item was loaned out
+  expectedReturnDate: timestamp("expected_return_date"), // Expected return date
   actualReturnDate: date("actual_return_date"),
   status: text("status").notNull().default("Ongoing"), // Ongoing, Returned, Overdue
   notes: text("notes"),
+  createdBy: integer("created_by"), // User who processed the loan
 });
 
 // Schema for creating a loan group with items

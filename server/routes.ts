@@ -396,20 +396,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // We only want to show individual loans in the loans list
       const individualLoans = allLoans.filter(loan => loan.loanGroupId === null);
       
-      // Fetch borrower information for each loan if needed
-      const loansWithInfo = await Promise.all(individualLoans.map(async (loan: any) => {
-        if (!loan.borrowerName) {
-          // Get the inventory item to display more information
-          const item = await storage.getInventoryItem(loan.itemId);
-          return {
-            ...loan,
-            itemName: item ? item.name : `Item #${loan.itemId}`
-          };
-        }
-        return loan;
+      // Enhance each loan with item name and ensure borrower information is available
+      const enhancedLoans = await Promise.all(individualLoans.map(async (loan: any) => {
+        // Get the inventory item to display more information
+        const item = await storage.getInventoryItem(loan.itemId);
+        
+        // Add/enhance loan with needed information
+        return {
+          ...loan,
+          // Display item information
+          itemName: item ? `${item.itemId} - ${item.name}` : `Item #${loan.itemId}`,
+          
+          // Make sure borrower information is always available
+          borrowerName: loan.borrowerName || "Unknown",
+          borrowerType: loan.borrowerType || "Individual",
+          borrowerContact: loan.borrowerContact || "",
+          
+          // Ensure date fields are properly formatted
+          loanDate: loan.loanDate || new Date().toISOString(),
+          expectedReturnDate: loan.expectedReturnDate || null
+        };
       }));
       
-      res.json(loansWithInfo);
+      res.json(enhancedLoans);
     } catch (error) {
       console.error("Error fetching loans:", error);
       res.status(500).json({ message: "Failed to fetch loans" });
@@ -421,20 +430,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = parseInt(req.query.limit as string) || 5;
       const loans = await storage.getRecentLoans(limit);
       
-      // Enhance individual loans with borrower information
+      // Enhance loans with item names and complete borrower information
       const enhancedLoans = await Promise.all(loans.map(async (loan) => {
+        // Get the inventory item to display more information
+        const item = await storage.getInventoryItem(loan.itemId);
+        
+        // If this is a group loan, keep the group information
+        if (loan.isGroupLoan && loan.loanGroupId) {
+          return {
+            ...loan,
+            itemName: item ? item.name : `Item #${loan.itemId}`,
+            // Group loans already have borrower info from the group
+          };
+        }
+        
+        // For individual loans, ensure borrower information is available
         if (!loan.borrowerName || loan.borrowerName === "Individual Loan") {
-          // This is an individual loan, get the borrower info from the loan record
+          // Try to get borrower info from the full loan record
           const loanRecord = await storage.getLoan(loan.id);
           if (loanRecord) {
             return {
               ...loan,
+              itemName: item ? `${item.itemId} - ${item.name}` : `Item #${loan.itemId}`,
               borrowerName: loanRecord.borrowerName || "Unknown",
-              borrowerType: loanRecord.borrowerType || "Individual"
+              borrowerType: loanRecord.borrowerType || "Individual",
+              borrowerContact: loanRecord.borrowerContact || ""
             };
           }
         }
-        return loan;
+        
+        // Return the loan with item name at minimum
+        return {
+          ...loan,
+          itemName: item ? `${item.itemId} - ${item.name}` : `Item #${loan.itemId}`,
+          borrowerName: loan.borrowerName || "Unknown",
+          borrowerType: loan.borrowerType || "Individual"
+        };
       }));
       
       res.json(enhancedLoans);
