@@ -68,6 +68,12 @@ function Router() {
           <Loans />
         </Layout>
       </Route>
+
+      <Route path="/loans/new-multi">
+        <Layout>
+          <Loans />
+        </Layout>
+      </Route>
       
       <Route path="/loans/view/:id">
         {(params) => (
