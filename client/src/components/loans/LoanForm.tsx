@@ -106,8 +106,16 @@ export default function LoanForm({ preselectedItemId }: LoanFormProps) {
   // Create loan mutation
   const createLoan = useMutation({
     mutationFn: async (data: z.infer<typeof loanSchema>) => {
-      const response = await apiRequest('POST', '/api/loans', data);
-      return response.json();
+      try {
+        console.log('Submitting loan data:', data); // Debug the submitted data
+        const response = await apiRequest('POST', '/api/loans', data);
+        const result = await response.json();
+        console.log('Loan success response:', result);
+        return result;
+      } catch (error) {
+        console.error('Loan API request error details:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
@@ -121,10 +129,11 @@ export default function LoanForm({ preselectedItemId }: LoanFormProps) {
       
       navigate('/loans');
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      const errorMessage = error?.message || 'Failed to process the loan. Please try again.';
       toast({
         title: 'Error',
-        description: 'Failed to process the loan. Please try again.',
+        description: errorMessage,
         variant: 'destructive',
       });
       console.error('Error processing loan:', error);

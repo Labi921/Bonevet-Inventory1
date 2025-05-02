@@ -91,7 +91,10 @@ export const loans = pgTable("loans", {
 });
 
 export const insertLoanSchema = createInsertSchema(loans)
-  .omit({ id: true, actualReturnDate: true, status: true });
+  .omit({ id: true, actualReturnDate: true, status: true })
+  .extend({
+    createdBy: z.number().optional(), // Make createdBy optional in validation, will be added on server
+  });
 
 // Document Model
 export const documents = pgTable("documents", {
