@@ -72,6 +72,7 @@ export const insertInventoryItemSchema = createInsertSchema(inventoryItems)
     category: itemCategoryEnum,
     status: itemStatusEnum,
     usage: itemUsageEnum,
+    itemId: z.string().optional(),
   });
 
 // Loan Model
