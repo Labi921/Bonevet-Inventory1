@@ -280,7 +280,7 @@ export class MemStorage implements IStorage {
       documentId: `DOC-LOAN-${year}-${id.toString().padStart(3, '0')}`,
       type: "Loan",
       title: `Loan Agreement - ${loanGroupData.borrowerName}`,
-      content: `This document certifies that the items have been loaned to ${loanGroupData.borrowerName} (${loanGroupData.borrowerType}) from ${loanGroup.loanDate.toISOString().split('T')[0]} until ${loanGroup.expectedReturnDate.toISOString().split('T')[0]}.`,
+      content: `This document certifies that the items have been loaned to ${loanGroupData.borrowerName} (${loanGroupData.borrowerType}) from ${new Date(loanGroup.loanDate).toISOString().split('T')[0]} until ${new Date(loanGroup.expectedReturnDate).toISOString().split('T')[0]}.`,
       relatedItemId: loanGroupId,
       signedBy: [],
       createdBy: loanGroupData.createdBy || 1

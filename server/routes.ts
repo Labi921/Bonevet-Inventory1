@@ -355,9 +355,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.status(201).json(loanGroup);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating loan group:", error);
-      res.status(500).json({ message: "Failed to create loan group" });
+      res.status(500).json({ message: "Failed to create loan group", error: error?.message || "Unknown error" });
     }
   });
 
