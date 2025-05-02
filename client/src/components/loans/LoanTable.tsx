@@ -182,12 +182,12 @@ export default function LoanTable({ loans, isLoading }: LoanTableProps) {
                 return (
                   <TableRow key={loan.id}>
                     <TableCell className="font-medium">
-                      {getItemName(loan.itemId)}
+                      {loan.itemName || getItemName(loan.itemId)}
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p>{loan.borrowerName}</p>
-                        <p className="text-sm text-gray-500">({loan.borrowerType})</p>
+                        <p>{loan.borrowerName || 'Unknown'}</p>
+                        <p className="text-sm text-gray-500">({loan.borrowerType || 'Individual'})</p>
                       </div>
                     </TableCell>
                     <TableCell>

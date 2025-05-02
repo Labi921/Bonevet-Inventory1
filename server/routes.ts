@@ -390,9 +390,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Individual Loan routes
   app.get("/api/loans", requireAuth, async (req, res) => {
     try {
-      const loans = await storage.listLoans();
-      res.json(loans);
+      const allLoans = await storage.listLoans();
+      
+      // Filter out loans that are part of a loan group (multi-item loans)
+      // We only want to show individual loans in the loans list
+      const individualLoans = allLoans.filter(loan => loan.loanGroupId === null);
+      
+      // Fetch borrower information for each loan if needed
+      const loansWithInfo = await Promise.all(individualLoans.map(async (loan: any) => {
+        if (!loan.borrowerName) {
+          // Get the inventory item to display more information
+          const item = await storage.getInventoryItem(loan.itemId);
+          return {
+            ...loan,
+            itemName: item ? item.name : `Item #${loan.itemId}`
+          };
+        }
+        return loan;
+      }));
+      
+      res.json(loansWithInfo);
     } catch (error) {
+      console.error("Error fetching loans:", error);
       res.status(500).json({ message: "Failed to fetch loans" });
     }
   });

@@ -108,11 +108,19 @@ export default function RecentLoans() {
                   <TableRow key={loan.id}>
                     <TableCell className="whitespace-nowrap">
                       <div className="flex items-center">
-                        <span className="font-medium text-gray-800">{getItemName(loan.itemId)}</span>
+                        <span className="font-medium text-gray-800">
+                          {getItemName(
+                            loan.itemId,
+                            loan.isGroupLoan || false,
+                            loan.loanGroupId || null,
+                            loan.itemCount
+                          )}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm text-gray-600">
-                      {loan.borrowerName} ({loan.borrowerType})
+                      {loan.borrowerName || 'Unknown'} 
+                      {loan.borrowerType ? `(${loan.borrowerType})` : ''}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm text-gray-600">
                       {loan.loanDate ? format(new Date(loan.loanDate), 'MMM dd, yyyy') : '—'}
