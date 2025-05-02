@@ -87,7 +87,7 @@ export default function RecentActivity() {
                       {log.userName || 'User #' + log.userId}
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">
-                      {format(new Date(log.timestamp), 'MMM dd, h:mm a')}
+                      {log.timestamp ? format(new Date(log.timestamp), 'MMM dd, h:mm a') : '—'}
                     </TableCell>
                   </TableRow>
                 ))

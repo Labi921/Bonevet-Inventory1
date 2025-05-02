@@ -276,22 +276,22 @@ export default function Loans() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          {format(new Date(group.loanDate), 'MMM dd, yyyy')}
+                          {group.loanDate ? format(new Date(group.loanDate), 'MMM dd, yyyy') : '—'}
                         </TableCell>
                         <TableCell>
-                          {format(new Date(group.expectedReturnDate), 'MMM dd, yyyy')}
+                          {group.expectedReturnDate ? format(new Date(group.expectedReturnDate), 'MMM dd, yyyy') : '—'}
                         </TableCell>
                         <TableCell>
                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                             group.status === 'Returned' 
                               ? 'bg-green-100 text-green-800' 
-                              : isAfter(new Date(), parseISO(group.expectedReturnDate))
+                              : group.expectedReturnDate && isAfter(new Date(), new Date(group.expectedReturnDate))
                               ? 'bg-red-100 text-red-800'
                               : 'bg-amber-100 text-amber-800'
                           }`}>
                             {group.status === 'Returned' 
                               ? 'Returned' 
-                              : isAfter(new Date(), parseISO(group.expectedReturnDate))
+                              : group.expectedReturnDate && isAfter(new Date(), new Date(group.expectedReturnDate))
                               ? 'Overdue'
                               : 'Ongoing'}
                           </span>

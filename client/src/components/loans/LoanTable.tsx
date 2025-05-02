@@ -101,13 +101,19 @@ export default function LoanTable({ loans, isLoading }: LoanTableProps) {
   
   // Get status with overdue check
   const getLoanStatus = (loan: any) => {
+    if (!loan || !loan.expectedReturnDate) {
+      return 'Unknown';
+    }
+    
     if (loan.status === 'Returned') {
       return 'Returned';
     }
     
     // Check if overdue
     const today = new Date();
-    const expectedReturn = parseISO(loan.expectedReturnDate);
+    // Handle both string and Date objects
+    const expectedReturn = typeof loan.expectedReturnDate === 'string' ? 
+      parseISO(loan.expectedReturnDate) : new Date(loan.expectedReturnDate);
     
     if (isAfter(today, expectedReturn)) {
       return 'Overdue';
@@ -185,10 +191,10 @@ export default function LoanTable({ loans, isLoading }: LoanTableProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {format(new Date(loan.loanDate), 'MMM dd, yyyy')}
+                      {loan.loanDate ? format(new Date(loan.loanDate), 'MMM dd, yyyy') : '—'}
                     </TableCell>
                     <TableCell>
-                      {format(new Date(loan.expectedReturnDate), 'MMM dd, yyyy')}
+                      {loan.expectedReturnDate ? format(new Date(loan.expectedReturnDate), 'MMM dd, yyyy') : '—'}
                     </TableCell>
                     <TableCell>
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(status)}`}>
