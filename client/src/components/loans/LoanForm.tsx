@@ -43,14 +43,14 @@ const loanSchema = z.object({
   }),
   borrowerName: z.string().min(1, "Borrower name is required"),
   borrowerType: z.string().min(1, "Borrower type is required"),
-  borrowerContact: z.string().optional(),
+  borrowerContact: z.string().nullish().or(z.literal('')),
   loanDate: z.date({
     required_error: "Loan date is required",
   }),
   expectedReturnDate: z.date({
     required_error: "Expected return date is required",
   }),
-  notes: z.string().optional(),
+  notes: z.string().nullish().or(z.literal('')),
 }).refine(data => {
   const loanDate = new Date(data.loanDate);
   const returnDate = new Date(data.expectedReturnDate);

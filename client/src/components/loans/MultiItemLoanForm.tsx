@@ -67,14 +67,14 @@ export default function MultiItemLoanForm({ preselectedItemId }: MultiItemLoanFo
     borrowerType: z.string({
       required_error: "Please select a borrower type",
     }),
-    borrowerContact: z.string().optional(),
+    borrowerContact: z.string().nullish().or(z.literal('')),
     loanDate: z.date({
       required_error: "Loan date is required",
     }),
     expectedReturnDate: z.date({
       required_error: "Expected return date is required",
     }),
-    notes: z.string().optional(),
+    notes: z.string().nullish().or(z.literal('')),
   }).refine(data => data.expectedReturnDate > data.loanDate, {
     message: "Expected return date must be after the loan date",
     path: ["expectedReturnDate"],

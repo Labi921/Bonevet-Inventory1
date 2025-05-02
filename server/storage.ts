@@ -373,7 +373,9 @@ export class MemStorage implements IStorage {
       ...insertLoan, 
       id,
       actualReturnDate: null,
-      status: "Ongoing"
+      status: "Ongoing",
+      // Ensure loanGroupId is defined for the database model
+      loanGroupId: insertLoan.loanGroupId || null
     };
     this.loans.set(id, loan);
     

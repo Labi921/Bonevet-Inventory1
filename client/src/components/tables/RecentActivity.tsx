@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table';
 
 export default function RecentActivity() {
-  const { data: activity, isLoading } = useQuery({
+  const { data: activity = [], isLoading } = useQuery({
     queryKey: ['/api/activity/recent?limit=4'],
   });
 
@@ -72,7 +72,7 @@ export default function RecentActivity() {
                     </TableCell>
                   </TableRow>
                 ))
-              ) : activity && activity.length > 0 ? (
+              ) : Array.isArray(activity) && activity.length > 0 ? (
                 activity.map((log: any) => (
                   <TableRow key={log.id}>
                     <TableCell className="font-medium">

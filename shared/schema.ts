@@ -93,7 +93,7 @@ export const loanGroups = pgTable("loan_groups", {
 // Loan Model (individual items in a loan group)
 export const loans = pgTable("loans", {
   id: serial("id").primaryKey(),
-  loanGroupId: integer("loan_group_id").notNull(), // Reference to loan_groups.id
+  loanGroupId: integer("loan_group_id"), // Reference to loan_groups.id, made optional
   itemId: integer("item_id").notNull(),
   actualReturnDate: date("actual_return_date"),
   status: text("status").notNull().default("Ongoing"), // Ongoing, Returned, Overdue
