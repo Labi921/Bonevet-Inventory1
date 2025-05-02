@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { queryClient, apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Download, Search, Package, Users } from 'lucide-react';
 import { format, isAfter, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -31,11 +33,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function Loans() {
   const [location] = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const { toast } = useToast();
   
   // Check if we're on a sub-route
   const isNewLoan = location === '/loans/new' || location.startsWith('/loans/new?');
@@ -284,16 +298,35 @@ export default function Loans() {
                         </TableCell>
                         <TableCell className="text-right">
                           {group.status !== 'Returned' ? (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="text-green-600 hover:text-green-700"
-                              onClick={() => {
-                                // Return loan group implementation
-                              }}
-                            >
-                              Return All Items
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="text-green-600 hover:text-green-700"
+                                >
+                                  Return All Items
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Return All Items</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to mark all items in this loan group as returned? 
+                                    This will update the inventory status for all loaned items.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => returnLoanGroup.mutate(group.id)}
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    Return All Items
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           ) : (
                             <Button 
                               variant="outline" 
