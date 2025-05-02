@@ -1,6 +1,7 @@
 import { 
   users, User, InsertUser,
   inventoryItems, InventoryItem, InsertInventoryItem,
+  loanGroups, LoanGroup, InsertLoanGroup,
   loans, Loan, InsertLoan,
   documents, Document, InsertDocument,
   activityLogs, ActivityLog, InsertActivityLog
@@ -26,8 +27,19 @@ export interface IStorage {
   countInventoryItems(): Promise<{ total: number, available: number, loaned: number, damaged: number }>;
   getInventoryItemsByCategory(): Promise<{ category: string, count: number }[]>;
 
-  // Loan Operations
+  // Loan Group Operations
+  getLoanGroup(id: number): Promise<LoanGroup & { items: (Loan & { item: InventoryItem })[] }>;
+  getLoanGroupByLoanGroupId(loanGroupId: string): Promise<LoanGroup & { items: (Loan & { item: InventoryItem })[] } | undefined>;
+  createLoanGroup(loanGroup: InsertLoanGroup, itemIds: number[]): Promise<LoanGroup & { items: Loan[] }>;
+  listLoanGroups(): Promise<LoanGroup[]>;
+  updateLoanGroup(id: number, loanGroupData: Partial<Omit<InsertLoanGroup, 'items'>>): Promise<LoanGroup | undefined>;
+  markLoanGroupReturned(id: number, actualReturnDate: Date): Promise<LoanGroup | undefined>;
+  deleteLoanGroup(id: number): Promise<boolean>;
+  getRecentLoanGroups(limit: number): Promise<LoanGroup[]>;
+
+  // Loan Operations (Individual items)
   getLoan(id: number): Promise<Loan | undefined>;
+  getLoansByLoanGroupId(loanGroupId: number): Promise<(Loan & { item: InventoryItem })[]>;
   createLoan(loan: InsertLoan): Promise<Loan>;
   listLoans(): Promise<Loan[]>;
   updateLoan(id: number, loanData: Partial<InsertLoan>): Promise<Loan | undefined>;
@@ -52,12 +64,14 @@ export interface IStorage {
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private inventoryItems: Map<number, InventoryItem>;
+  private loanGroups: Map<number, LoanGroup>;
   private loans: Map<number, Loan>;
   private documents: Map<number, Document>;
   private activityLogs: Map<number, ActivityLog>;
   
   private userIdCounter: number;
   private inventoryIdCounter: number;
+  private loanGroupIdCounter: number;
   private loanIdCounter: number;
   private documentIdCounter: number;
   private activityLogIdCounter: number;
@@ -65,12 +79,14 @@ export class MemStorage implements IStorage {
   constructor() {
     this.users = new Map();
     this.inventoryItems = new Map();
+    this.loanGroups = new Map();
     this.loans = new Map();
     this.documents = new Map();
     this.activityLogs = new Map();
     
     this.userIdCounter = 1;
     this.inventoryIdCounter = 1;
+    this.loanGroupIdCounter = 1;
     this.loanIdCounter = 1;
     this.documentIdCounter = 1;
     this.activityLogIdCounter = 1;
@@ -205,9 +221,150 @@ export class MemStorage implements IStorage {
     }));
   }
 
-  // Loan Operations
+  // Loan Group Operations
+  async getLoanGroup(id: number): Promise<LoanGroup & { items: (Loan & { item: InventoryItem })[] }> {
+    const loanGroup = this.loanGroups.get(id);
+    if (!loanGroup) {
+      throw new Error(`Loan group with ID ${id} not found`);
+    }
+    
+    const loans = await this.getLoansByLoanGroupId(id);
+    return { ...loanGroup, items: loans };
+  }
+  
+  async getLoanGroupByLoanGroupId(loanGroupId: string): Promise<LoanGroup & { items: (Loan & { item: InventoryItem })[] } | undefined> {
+    const loanGroup = Array.from(this.loanGroups.values()).find(
+      (group) => group.loanGroupId === loanGroupId,
+    );
+    
+    if (!loanGroup) return undefined;
+    
+    const loans = await this.getLoansByLoanGroupId(loanGroup.id);
+    return { ...loanGroup, items: loans };
+  }
+  
+  async createLoanGroup(loanGroupData: InsertLoanGroup, itemIds: number[]): Promise<LoanGroup & { items: Loan[] }> {
+    // Create the loan group
+    const id = this.loanGroupIdCounter++;
+    const now = new Date();
+    const year = now.getFullYear();
+    
+    // Generate a loan group ID in the format LOAN-2025-001
+    const loanGroupId = `LOAN-${year}-${id.toString().padStart(3, '0')}`;
+    
+    const loanGroup: LoanGroup = {
+      ...loanGroupData,
+      id,
+      loanGroupId,
+      status: "Ongoing",
+      createdAt: now
+    };
+    
+    this.loanGroups.set(id, loanGroup);
+    
+    // Create individual loan entries for each item
+    const loanItems: Loan[] = [];
+    
+    for (const itemId of itemIds) {
+      const loan = await this.createLoan({ 
+        loanGroupId: id, 
+        itemId, 
+        notes: loanGroupData.notes || null 
+      });
+      
+      loanItems.push(loan);
+    }
+    
+    // Generate a loan document
+    await this.createDocument({
+      documentId: `DOC-LOAN-${year}-${id.toString().padStart(3, '0')}`,
+      type: "Loan",
+      title: `Loan Agreement - ${loanGroupData.borrowerName}`,
+      content: `This document certifies that the items have been loaned to ${loanGroupData.borrowerName} (${loanGroupData.borrowerType}) from ${loanGroup.loanDate.toISOString().split('T')[0]} until ${loanGroup.expectedReturnDate.toISOString().split('T')[0]}.`,
+      relatedItemId: loanGroupId,
+      signedBy: [],
+      createdBy: loanGroupData.createdBy || 1
+    });
+    
+    return { ...loanGroup, items: loanItems };
+  }
+  
+  async listLoanGroups(): Promise<LoanGroup[]> {
+    return Array.from(this.loanGroups.values());
+  }
+  
+  async updateLoanGroup(id: number, loanGroupData: Partial<Omit<InsertLoanGroup, 'items'>>): Promise<LoanGroup | undefined> {
+    const loanGroup = this.loanGroups.get(id);
+    if (!loanGroup) return undefined;
+    
+    const updatedLoanGroup = { ...loanGroup, ...loanGroupData };
+    this.loanGroups.set(id, updatedLoanGroup);
+    return updatedLoanGroup;
+  }
+  
+  async markLoanGroupReturned(id: number, actualReturnDate: Date): Promise<LoanGroup | undefined> {
+    const loanGroup = this.loanGroups.get(id);
+    if (!loanGroup) return undefined;
+    
+    // Update loan group status
+    const updatedLoanGroup = {
+      ...loanGroup,
+      status: "Returned"
+    };
+    this.loanGroups.set(id, updatedLoanGroup);
+    
+    // Mark all associated loans as returned
+    const loans = Array.from(this.loans.values()).filter(
+      (loan) => loan.loanGroupId === id && loan.status !== "Returned"
+    );
+    
+    for (const loan of loans) {
+      await this.markLoanReturned(loan.id, actualReturnDate);
+    }
+    
+    return updatedLoanGroup;
+  }
+  
+  async deleteLoanGroup(id: number): Promise<boolean> {
+    // Delete all associated loans first
+    const loans = Array.from(this.loans.values()).filter(
+      (loan) => loan.loanGroupId === id
+    );
+    
+    for (const loan of loans) {
+      await this.deleteLoan(loan.id);
+    }
+    
+    return this.loanGroups.delete(id);
+  }
+  
+  async getRecentLoanGroups(limit: number): Promise<LoanGroup[]> {
+    const allLoanGroups = Array.from(this.loanGroups.values());
+    return allLoanGroups
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, limit);
+  }
+  
+  // Loan Operations (Individual items)
   async getLoan(id: number): Promise<Loan | undefined> {
     return this.loans.get(id);
+  }
+  
+  async getLoansByLoanGroupId(loanGroupId: number): Promise<(Loan & { item: InventoryItem })[]> {
+    const loans = Array.from(this.loans.values()).filter(
+      (loan) => loan.loanGroupId === loanGroupId
+    );
+    
+    const result: (Loan & { item: InventoryItem })[] = [];
+    
+    for (const loan of loans) {
+      const item = await this.getInventoryItem(loan.itemId);
+      if (item) {
+        result.push({ ...loan, item });
+      }
+    }
+    
+    return result;
   }
 
   async createLoan(insertLoan: InsertLoan): Promise<Loan> {
@@ -268,8 +425,9 @@ export class MemStorage implements IStorage {
 
   async getRecentLoans(limit: number): Promise<Loan[]> {
     const allLoans = Array.from(this.loans.values());
+    // Sort by loanGroupId descending (most recent first)
     return allLoans
-      .sort((a, b) => new Date(b.loanDate).getTime() - new Date(a.loanDate).getTime())
+      .sort((a, b) => b.id - a.id)
       .slice(0, limit);
   }
 

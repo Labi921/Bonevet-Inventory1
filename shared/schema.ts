@@ -75,26 +75,42 @@ export const insertInventoryItemSchema = createInsertSchema(inventoryItems)
     itemId: z.string().optional(),
   });
 
-// Loan Model
-export const loans = pgTable("loans", {
+// Loan Group Model (for grouping multiple items in one loan)
+export const loanGroups = pgTable("loan_groups", {
   id: serial("id").primaryKey(),
-  itemId: integer("item_id").notNull(),
+  loanGroupId: text("loan_group_id").notNull().unique(), // LOAN-2025-001 format
   borrowerName: text("borrower_name").notNull(),
   borrowerType: text("borrower_type").notNull(), // Staff, Member, Other Organization
   borrowerContact: text("borrower_contact"),
   loanDate: date("loan_date").notNull(),
   expectedReturnDate: date("expected_return_date").notNull(),
-  actualReturnDate: date("actual_return_date"),
   status: text("status").notNull().default("Ongoing"), // Ongoing, Returned, Overdue
   notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
   createdBy: integer("created_by").notNull(),
 });
 
-export const insertLoanSchema = createInsertSchema(loans)
-  .omit({ id: true, actualReturnDate: true, status: true })
+// Loan Model (individual items in a loan group)
+export const loans = pgTable("loans", {
+  id: serial("id").primaryKey(),
+  loanGroupId: integer("loan_group_id").notNull(), // Reference to loan_groups.id
+  itemId: integer("item_id").notNull(),
+  actualReturnDate: date("actual_return_date"),
+  status: text("status").notNull().default("Ongoing"), // Ongoing, Returned, Overdue
+  notes: text("notes"),
+});
+
+// Schema for creating a loan group with items
+export const insertLoanGroupSchema = createInsertSchema(loanGroups)
+  .omit({ id: true, loanGroupId: true, createdAt: true, status: true })
   .extend({
-    createdBy: z.number().optional(), // Make createdBy optional in validation, will be added on server
+    createdBy: z.number().optional(), // Added by server
+    items: z.array(z.number()).min(1, "At least one item must be selected"), // Array of item IDs
   });
+
+// Schema for individual loan items (used internally)
+export const insertLoanSchema = createInsertSchema(loans)
+  .omit({ id: true, actualReturnDate: true, status: true });
 
 // Document Model
 export const documents = pgTable("documents", {
@@ -132,6 +148,9 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export type InventoryItem = typeof inventoryItems.$inferSelect;
 export type InsertInventoryItem = z.infer<typeof insertInventoryItemSchema>;
+
+export type LoanGroup = typeof loanGroups.$inferSelect;
+export type InsertLoanGroup = z.infer<typeof insertLoanGroupSchema>;
 
 export type Loan = typeof loans.$inferSelect;
 export type InsertLoan = z.infer<typeof insertLoanSchema>;
