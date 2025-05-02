@@ -27,28 +27,96 @@ function Router() {
         </Layout>
       </Route>
       
+      {/* Inventory routes */}
       <Route path="/inventory">
         <Layout>
           <Inventory />
         </Layout>
       </Route>
       
+      <Route path="/inventory/add">
+        <Layout>
+          <Inventory />
+        </Layout>
+      </Route>
+      
+      <Route path="/inventory/view/:id">
+        {(params) => (
+          <Layout>
+            <Inventory />
+          </Layout>
+        )}
+      </Route>
+      
+      <Route path="/inventory/edit/:id">
+        {(params) => (
+          <Layout>
+            <Inventory />
+          </Layout>
+        )}
+      </Route>
+      
+      {/* Loan routes */}
       <Route path="/loans">
         <Layout>
           <Loans />
         </Layout>
       </Route>
       
+      <Route path="/loans/new">
+        <Layout>
+          <Loans />
+        </Layout>
+      </Route>
+      
+      <Route path="/loans/view/:id">
+        {(params) => (
+          <Layout>
+            <Loans />
+          </Layout>
+        )}
+      </Route>
+      
+      {/* Document routes */}
       <Route path="/documents">
         <Layout>
           <Documents />
         </Layout>
       </Route>
       
+      <Route path="/documents/new">
+        <Layout>
+          <Documents />
+        </Layout>
+      </Route>
+      
+      <Route path="/documents/view/:id">
+        {(params) => (
+          <Layout>
+            <Documents />
+          </Layout>
+        )}
+      </Route>
+      
+      {/* User routes */}
       <Route path="/users">
         <Layout>
           <Users />
         </Layout>
+      </Route>
+      
+      <Route path="/users/add">
+        <Layout>
+          <Users />
+        </Layout>
+      </Route>
+      
+      <Route path="/users/edit/:id">
+        {(params) => (
+          <Layout>
+            <Users />
+          </Layout>
+        )}
       </Route>
       
       <Route path="/settings">
