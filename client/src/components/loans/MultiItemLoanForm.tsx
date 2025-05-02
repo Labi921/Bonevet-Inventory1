@@ -219,10 +219,10 @@ export default function MultiItemLoanForm({ preselectedItemId }: MultiItemLoanFo
                                 availableItems.map((item: any) => (
                                   <TableRow 
                                     key={item.id}
-                                    className={selectedItems.includes(item.id) ? "bg-blue-50" : ""}
+                                    className={selectedItems.includes(item.id) ? "bg-blue-50" : "cursor-pointer hover:bg-slate-50"}
                                     onClick={() => toggleItemSelection(item.id)}
                                   >
-                                    <TableCell>
+                                    <TableCell onClick={(e) => e.stopPropagation()}>
                                       <Checkbox
                                         checked={selectedItems.includes(item.id)}
                                         onCheckedChange={() => toggleItemSelection(item.id)}
