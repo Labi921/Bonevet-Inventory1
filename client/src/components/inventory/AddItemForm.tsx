@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { insertInventoryItemSchema } from '@/lib/utils/categoryUtils';
+import { itemCategoryEnum, itemStatusEnum, itemUsageEnum } from '@/lib/utils/categoryUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
@@ -29,14 +29,13 @@ import {
 } from '@/components/ui/select';
 import { ArrowLeft, Save } from 'lucide-react';
 
-const formSchema = insertInventoryItemSchema.extend({
-  price: z.union([
-    z.number().min(0, "Price must be a positive number"),
-    z.string().transform((val) => {
-      const num = parseFloat(val);
-      return isNaN(num) ? 0 : num;
-    })
-  ]).optional(),
+// Define a simpler form schema that matches server expectations
+const formSchema = z.object({
+  name: z.string().min(1, "Item name is required"),
+  model: z.string().optional(),
+  category: itemCategoryEnum,
+  status: itemStatusEnum.default("Available"),
+  location: z.string().optional(),
   quantity: z.union([
     z.number().int().positive("Quantity must be a positive integer"),
     z.string().transform((val) => {
@@ -44,7 +43,17 @@ const formSchema = insertInventoryItemSchema.extend({
       return isNaN(num) ? 1 : num;
     })
   ]).default(1),
-}).omit({ itemId: true });
+  price: z.union([
+    z.number().min(0, "Price must be a positive number").optional(),
+    z.string().transform((val) => {
+      if (!val) return undefined;
+      const num = parseFloat(val);
+      return isNaN(num) ? undefined : num;
+    }).optional()
+  ]).optional(),
+  usage: itemUsageEnum.default("None"),
+  notes: z.string().optional(),
+});
 
 export default function AddItemForm() {
   const [, navigate] = useLocation();
@@ -70,8 +79,16 @@ export default function AddItemForm() {
   // Create item mutation
   const createItem = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
-      const response = await apiRequest('POST', '/api/inventory', data);
-      return response.json();
+      try {
+        console.log('Submitting data:', data); // Debug the submitted data
+        const response = await apiRequest('POST', '/api/inventory', data);
+        const result = await response.json();
+        console.log('Success response:', result);
+        return result;
+      } catch (error) {
+        console.error('API request error:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
@@ -97,10 +114,11 @@ export default function AddItemForm() {
         navigate('/inventory');
       }
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      const errorMessage = error?.message || 'Failed to add the item. Please try again.';
       toast({
         title: 'Error',
-        description: 'Failed to add the item. Please try again.',
+        description: errorMessage,
         variant: 'destructive',
       });
       console.error('Error adding item:', error);

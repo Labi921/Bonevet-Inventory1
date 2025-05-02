@@ -86,9 +86,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const validateSchema = (schema: any) => {
     return (req: Request, res: Response, next: any) => {
       try {
-        schema.parse(req.body);
+        // Log the incoming request body for debugging
+        console.log("Validating request body:", req.body);
+        const result = schema.safeParse(req.body);
+        
+        if (!result.success) {
+          const validationError = fromZodError(result.error);
+          console.log("Validation error:", validationError);
+          return res.status(400).json({ 
+            message: "Validation error",
+            errors: validationError.details
+          });
+        }
+        
+        // Replace the request body with the parsed data
+        req.body = result.data;
         next();
       } catch (error) {
+        console.error("Error during validation:", error);
         if (error instanceof ZodError) {
           const validationError = fromZodError(error);
           return res.status(400).json({ 
