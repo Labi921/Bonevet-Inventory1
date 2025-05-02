@@ -27,7 +27,7 @@ export default function RecentLoans() {
 
   const getItemName = (itemId: number) => {
     if (!inventory) return 'Loading...';
-    const item = inventory.find((item: any) => item.id === itemId);
+    const item = Array.isArray(inventory) ? inventory.find((item: any) => item.id === itemId) : null;
     return item ? `${item.itemId} - ${item.name}` : `Item #${itemId}`;
   };
 
@@ -93,7 +93,7 @@ export default function RecentLoans() {
                     </TableCell>
                   </TableRow>
                 ))
-              ) : loans && loans.length > 0 ? (
+              ) : loans && Array.isArray(loans) && loans.length > 0 ? (
                 loans.map((loan: any) => (
                   <TableRow key={loan.id}>
                     <TableCell className="whitespace-nowrap">
@@ -105,10 +105,10 @@ export default function RecentLoans() {
                       {loan.borrowerName} ({loan.borrowerType})
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm text-gray-600">
-                      {format(new Date(loan.loanDate), 'MMM dd, yyyy')}
+                      {loan.loanDate ? format(new Date(loan.loanDate), 'MMM dd, yyyy') : '—'}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm text-gray-600">
-                      {format(new Date(loan.expectedReturnDate), 'MMM dd, yyyy')}
+                      {loan.expectedReturnDate ? format(new Date(loan.expectedReturnDate), 'MMM dd, yyyy') : '—'}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       {getLoanStatusBadge(loan)}
@@ -126,11 +126,9 @@ export default function RecentLoans() {
           </Table>
         </div>
         <div className="mt-4">
-          <Link href="/loans">
-            <a className="text-sm font-medium text-primary-600 hover:text-primary-800">
-              View all loans →
-            </a>
-          </Link>
+          <a href="/loans" className="text-sm font-medium text-primary-600 hover:text-primary-800">
+            View all loans →
+          </a>
         </div>
       </CardContent>
     </Card>

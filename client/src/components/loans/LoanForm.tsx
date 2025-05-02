@@ -75,11 +75,11 @@ export default function LoanForm({ preselectedItemId }: LoanFormProps) {
   });
   
   // Filter items to only show available ones
-  const availableItems = items ? items.filter((item: any) => item.status === 'Available') : [];
+  const availableItems = Array.isArray(items) ? items.filter((item: any) => item.status === 'Available') : [];
   
   // Get item details by ID
   const getItemById = (id: number) => {
-    return items?.find((item: any) => item.id === id);
+    return Array.isArray(items) ? items.find((item: any) => item.id === id) : null;
   };
   
   // Set up form with default values

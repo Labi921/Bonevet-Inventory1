@@ -102,11 +102,9 @@ export default function RecentActivity() {
           </Table>
         </div>
         <div className="mt-4">
-          <Link href="/audit-logs">
-            <a className="text-sm font-medium text-primary-600 hover:text-primary-800">
-              View all activity →
-            </a>
-          </Link>
+          <a href="/audit-logs" className="text-sm font-medium text-primary-600 hover:text-primary-800">
+            View all activity →
+          </a>
         </div>
       </CardContent>
     </Card>
