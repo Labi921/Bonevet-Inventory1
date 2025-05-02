@@ -425,10 +425,46 @@ export class MemStorage implements IStorage {
     return this.loans.delete(id);
   }
 
-  async getRecentLoans(limit: number): Promise<Loan[]> {
+  async getRecentLoans(limit: number): Promise<any[]> {
     const allLoans = Array.from(this.loans.values());
-    // Sort by loanGroupId descending (most recent first)
-    return allLoans
+    const combinedLoans = [];
+
+    // First get individual loans (without a loan group)
+    const individualLoans = allLoans.filter(loan => loan.loanGroupId === null);
+    
+    // Add borrower information to individual loans
+    for (const loan of individualLoans) {
+      const item = await this.getInventoryItem(loan.itemId);
+      combinedLoans.push({
+        ...loan,
+        borrowerName: "Individual Loan", // This will be replaced in routes.ts
+        borrowerType: "Individual",
+        loanDate: loan.loanDate || new Date().toISOString()
+      });
+    }
+    
+    // Then get loan groups
+    const loanGroups = Array.from(this.loanGroups.values());
+    for (const group of loanGroups) {
+      // Get the first item from the group to display
+      const groupLoans = allLoans.filter(loan => loan.loanGroupId === group.id);
+      if (groupLoans.length > 0) {
+        const firstLoan = groupLoans[0];
+        combinedLoans.push({
+          ...firstLoan,
+          borrowerName: group.borrowerName,
+          borrowerType: group.borrowerType,
+          loanDate: group.loanDate,
+          expectedReturnDate: group.expectedReturnDate,
+          isGroupLoan: true,
+          loanGroupId: group.id,
+          itemCount: groupLoans.length
+        });
+      }
+    }
+    
+    // Sort by id descending (most recent first) and limit
+    return combinedLoans
       .sort((a, b) => b.id - a.id)
       .slice(0, limit);
   }

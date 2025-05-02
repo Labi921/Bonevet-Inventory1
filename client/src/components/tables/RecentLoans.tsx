@@ -18,16 +18,21 @@ import {
 
 export default function RecentLoans() {
   const { data: loans = [], isLoading } = useQuery({
-    queryKey: ['/api/loans/recent?limit=3'],
+    queryKey: ['/api/loans/recent?limit=5'],
   });
 
   const { data: inventory = [] } = useQuery({
     queryKey: ['/api/inventory'],
   });
 
-  const getItemName = (itemId: number) => {
+  const getItemName = (itemId: number, isGroupLoan: boolean, loanGroupId: string | number | null, itemCount?: number) => {
     if (!Array.isArray(inventory)) return 'Loading...';
     const item = inventory.find((item: any) => item.id === itemId);
+    
+    if (isGroupLoan && loanGroupId && itemCount) {
+      return `${loanGroupId} (${itemCount} items)`;
+    }
+    
     return item ? `${item.itemId} - ${item.name}` : `Item #${itemId}`;
   };
 
@@ -41,6 +46,11 @@ export default function RecentLoans() {
     
     if (loan.status === 'Ongoing') {
       // Check if overdue
+      if (!loan.expectedReturnDate) {
+        className += "bg-amber-100 text-amber-800";
+        return <span className={className}>Ongoing</span>;
+      }
+      
       const isOverdue = isAfter(new Date(), new Date(loan.expectedReturnDate));
       
       if (isOverdue) {

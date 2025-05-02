@@ -401,8 +401,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const limit = parseInt(req.query.limit as string) || 5;
       const loans = await storage.getRecentLoans(limit);
-      res.json(loans);
+      
+      // Enhance individual loans with borrower information
+      const enhancedLoans = await Promise.all(loans.map(async (loan) => {
+        if (!loan.borrowerName || loan.borrowerName === "Individual Loan") {
+          // This is an individual loan, get the borrower info from the loan record
+          const loanRecord = await storage.getLoan(loan.id);
+          if (loanRecord) {
+            return {
+              ...loan,
+              borrowerName: loanRecord.borrowerName || "Unknown",
+              borrowerType: loanRecord.borrowerType || "Individual"
+            };
+          }
+        }
+        return loan;
+      }));
+      
+      res.json(enhancedLoans);
     } catch (error) {
+      console.error("Error fetching recent loans:", error);
       res.status(500).json({ message: "Failed to fetch recent loans" });
     }
   });
