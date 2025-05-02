@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { PlusCircle, Download, Filter, Search } from 'lucide-react';
+import { PlusCircle, Download, Search, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -13,7 +13,14 @@ import {
 } from '@/components/ui/select';
 import LoanTable from '@/components/loans/LoanTable';
 import LoanForm from '@/components/loans/LoanForm';
+import MultiItemLoanForm from '@/components/loans/MultiItemLoanForm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function Loans() {
   const [location] = useLocation();

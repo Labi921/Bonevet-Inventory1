@@ -8,7 +8,8 @@ import { storage } from "./storage";
 import { 
   insertUserSchema, 
   insertInventoryItemSchema, 
-  insertLoanSchema, 
+  insertLoanSchema,
+  insertLoanGroupSchema,
   insertDocumentSchema,
   insertActivityLogSchema
 } from "@shared/schema";
@@ -280,7 +281,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Loan routes
+  // Loan Group routes
+  app.get("/api/loan-groups", requireAuth, async (req, res) => {
+    try {
+      const loanGroups = await storage.listLoanGroups();
+      res.json(loanGroups);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch loan groups" });
+    }
+  });
+
+  app.get("/api/loan-groups/recent", requireAuth, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 5;
+      const loanGroups = await storage.getRecentLoanGroups(limit);
+      res.json(loanGroups);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch recent loan groups" });
+    }
+  });
+
+  app.get("/api/loan-groups/:id", requireAuth, async (req, res) => {
+    try {
+      const loanGroup = await storage.getLoanGroup(parseInt(req.params.id));
+      res.json(loanGroup);
+    } catch (error) {
+      res.status(404).json({ message: "Loan group not found" });
+    }
+  });
+
+  app.post("/api/loan-groups", requireAuth, validateSchema(insertLoanGroupSchema), async (req, res) => {
+    try {
+      // Check if all items exist and are available
+      const itemIds = req.body.items;
+      const unavailableItems = [];
+      
+      for (const itemId of itemIds) {
+        const item = await storage.getInventoryItem(itemId);
+        if (!item) {
+          return res.status(404).json({ message: `Item with ID ${itemId} not found` });
+        }
+        
+        if (item.status !== "Available") {
+          unavailableItems.push({
+            id: item.id,
+            name: item.name,
+            itemId: item.itemId,
+            status: item.status
+          });
+        }
+      }
+      
+      if (unavailableItems.length > 0) {
+        return res.status(400).json({ 
+          message: "Some items are not available for loan",
+          unavailableItems
+        });
+      }
+      
+      // Create the loan group
+      const loanGroup = await storage.createLoanGroup(
+        { ...req.body, createdBy: (req.user as any).id }, 
+        itemIds
+      );
+      
+      // Log the activity
+      await storage.createActivityLog({
+        userId: (req.user as any).id,
+        action: "Create",
+        entityType: "LoanGroup",
+        entityId: loanGroup.id.toString(),
+        details: `Created loan group with ${itemIds.length} items for ${loanGroup.borrowerName}`
+      });
+      
+      res.status(201).json(loanGroup);
+    } catch (error) {
+      console.error("Error creating loan group:", error);
+      res.status(500).json({ message: "Failed to create loan group" });
+    }
+  });
+
+  app.put("/api/loan-groups/:id/return", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const loanGroup = await storage.getLoanGroup(id);
+      
+      if (loanGroup.status === "Returned") {
+        return res.status(400).json({ message: "Loan group is already returned" });
+      }
+      
+      const updatedLoanGroup = await storage.markLoanGroupReturned(id, new Date());
+      
+      // Log the activity
+      await storage.createActivityLog({
+        userId: (req.user as any).id,
+        action: "Update",
+        entityType: "LoanGroup",
+        entityId: id.toString(),
+        details: `Marked loan group as returned`
+      });
+      
+      res.json(updatedLoanGroup);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update loan group" });
+    }
+  });
+
+  // Individual Loan routes
   app.get("/api/loans", requireAuth, async (req, res) => {
     try {
       const loans = await storage.listLoans();
