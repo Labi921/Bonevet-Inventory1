@@ -34,6 +34,9 @@ export default function ItemDetails({ id }: ItemDetailsProps) {
     status: string;
     location?: string;
     quantity: number;
+    quantityAvailable: number;
+    quantityLoaned: number;
+    quantityDamaged: number;
     price?: number;
     usage: string;
     notes?: string;

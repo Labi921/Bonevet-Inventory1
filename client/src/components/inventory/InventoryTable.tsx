@@ -129,31 +129,47 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
                     </span>
                   </TableCell>
                   <TableCell>{item.location}</TableCell>
-                  <TableCell className="text-center font-medium">{item.quantity}</TableCell>
+                  <TableCell className="text-center">
+                    <div className="text-sm">
+                      <div className="font-medium">{item.quantityAvailable || item.quantity}</div>
+                      {(item.quantityLoaned > 0 || item.quantityDamaged > 0) && (
+                        <div className="text-xs text-gray-500">
+                          {item.quantityLoaned > 0 && <span>Loaned: {item.quantityLoaned}</span>}
+                          {item.quantityLoaned > 0 && item.quantityDamaged > 0 && <span> • </span>}
+                          {item.quantityDamaged > 0 && <span>Damaged: {item.quantityDamaged}</span>}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>{item.price ? `€${item.price.toFixed(2)}` : '-'}</TableCell>
                   <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      className="text-primary-600 hover:text-primary-900" 
-                      onClick={() => handleViewItem(item.id)}
-                    >
-                      View
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      className="text-gray-600 hover:text-gray-900" 
-                      onClick={() => handleEditItem(item.id)}
-                    >
-                      Edit
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      className="text-amber-600 hover:text-amber-900"
-                      onClick={() => handleLoanItem(item.id)}
-                      disabled={item.status !== 'Available'}
-                    >
-                      Loan
-                    </Button>
+                    <div className="flex space-x-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-primary-600 hover:text-primary-900" 
+                        onClick={() => handleViewItem(item.id)}
+                      >
+                        View
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-gray-600 hover:text-gray-900" 
+                        onClick={() => handleEditItem(item.id)}
+                      >
+                        Edit
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-amber-600 hover:text-amber-900"
+                        onClick={() => handleLoanItem(item.id)}
+                        disabled={!item.quantityAvailable || item.quantityAvailable <= 0}
+                      >
+                        Loan
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

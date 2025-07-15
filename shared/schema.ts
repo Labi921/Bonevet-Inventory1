@@ -58,7 +58,10 @@ export const inventoryItems = pgTable("inventory_items", {
   category: text("category").notNull(),
   status: text("status").notNull().default("Available"),
   location: text("location"),
-  quantity: integer("quantity").notNull().default(1),
+  quantity: integer("quantity").notNull().default(1), // Total quantity registered
+  quantityAvailable: integer("quantity_available").notNull().default(1), // Available for loan
+  quantityLoaned: integer("quantity_loaned").notNull().default(0), // Currently loaned out
+  quantityDamaged: integer("quantity_damaged").notNull().default(0), // Damaged/under repair
   price: real("price"),
   usage: text("usage").default("None"),
   notes: text("notes"),
@@ -96,6 +99,7 @@ export const loans = pgTable("loans", {
   id: serial("id").primaryKey(),
   loanGroupId: integer("loan_group_id"), // Reference to loan_groups.id, made optional
   itemId: integer("item_id").notNull(),
+  quantityLoaned: integer("quantity_loaned").notNull().default(1), // How many units of this item are loaned
   borrowerName: text("borrower_name"), // For individual loans (not in a group)
   borrowerType: text("borrower_type"), // Staff, Student, Other Organization, etc.
   borrowerContact: text("borrower_contact"),

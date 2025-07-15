@@ -362,6 +362,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mark item as damaged
+  app.post("/api/inventory/:id/damage", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { quantity } = req.body;
+      
+      if (!quantity || quantity <= 0) {
+        return res.status(400).json({ message: "Quantity must be a positive number" });
+      }
+      
+      const updatedItem = await storage.markItemDamaged(id, quantity);
+      
+      if (!updatedItem) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+      
+      // Log the activity
+      await storage.createActivityLog({
+        userId: (req.user as any).id,
+        action: "Damage",
+        entityType: "InventoryItem",
+        entityId: id.toString(),
+        details: `Marked ${quantity} unit(s) of ${updatedItem.name} as damaged`
+      });
+      
+      res.json(updatedItem);
+    } catch (error) {
+      console.error('Error marking item as damaged:', error);
+      res.status(500).json({ message: error.message || "Failed to mark item as damaged" });
+    }
+  });
+
+  // Mark item as repaired
+  app.post("/api/inventory/:id/repair", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { quantity } = req.body;
+      
+      if (!quantity || quantity <= 0) {
+        return res.status(400).json({ message: "Quantity must be a positive number" });
+      }
+      
+      const updatedItem = await storage.markItemRepaired(id, quantity);
+      
+      if (!updatedItem) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+      
+      // Log the activity
+      await storage.createActivityLog({
+        userId: (req.user as any).id,
+        action: "Repair",
+        entityType: "InventoryItem",
+        entityId: id.toString(),
+        details: `Repaired ${quantity} unit(s) of ${updatedItem.name}`
+      });
+      
+      res.json(updatedItem);
+    } catch (error) {
+      console.error('Error marking item as repaired:', error);
+      res.status(500).json({ message: error.message || "Failed to mark item as repaired" });
+    }
+  });
+
   // Loan Group routes
   app.get("/api/loan-groups", requireAuth, async (req, res) => {
     try {

@@ -26,6 +26,11 @@ export interface IStorage {
   deleteInventoryItem(id: number): Promise<boolean>;
   countInventoryItems(): Promise<{ total: number, available: number, loaned: number, damaged: number }>;
   getInventoryItemsByCategory(): Promise<{ category: string, count: number }[]>;
+  
+  // Quantity Management
+  updateItemQuantities(itemId: number, quantityLoaned: number, quantityDamaged: number): Promise<InventoryItem | undefined>;
+  markItemDamaged(itemId: number, quantity: number): Promise<InventoryItem | undefined>;
+  markItemRepaired(itemId: number, quantity: number): Promise<InventoryItem | undefined>;
 
   // Loan Group Operations
   getLoanGroup(id: number): Promise<LoanGroup & { items: (Loan & { item: InventoryItem })[] }>;
@@ -168,6 +173,10 @@ export class MemStorage implements IStorage {
     const item: InventoryItem = { 
       ...insertItem, 
       id,
+      // Initialize quantity tracking
+      quantityAvailable: insertItem.quantity || 1,
+      quantityLoaned: 0,
+      quantityDamaged: 0,
       createdAt: now,
       updatedAt: now
     };
@@ -198,10 +207,10 @@ export class MemStorage implements IStorage {
 
   async countInventoryItems(): Promise<{ total: number, available: number, loaned: number, damaged: number }> {
     const items = Array.from(this.inventoryItems.values());
-    const total = items.length;
-    const available = items.filter(item => item.status === "Available").length;
-    const loaned = items.filter(item => item.status === "Loaned Out").length;
-    const damaged = items.filter(item => item.status === "Damaged").length;
+    const total = items.reduce((sum, item) => sum + item.quantity, 0);
+    const available = items.reduce((sum, item) => sum + item.quantityAvailable, 0);
+    const loaned = items.reduce((sum, item) => sum + item.quantityLoaned, 0);
+    const damaged = items.reduce((sum, item) => sum + item.quantityDamaged, 0);
     
     return { total, available, loaned, damaged };
   }
@@ -531,6 +540,67 @@ export class MemStorage implements IStorage {
     return allLogs
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       .slice(0, limit);
+  }
+
+  // Quantity Management Operations
+  async updateItemQuantities(itemId: number, quantityLoaned: number, quantityDamaged: number): Promise<InventoryItem | undefined> {
+    const item = this.inventoryItems.get(itemId);
+    if (!item) return undefined;
+    
+    const updatedItem = {
+      ...item,
+      quantityLoaned,
+      quantityDamaged,
+      quantityAvailable: item.quantity - quantityLoaned - quantityDamaged,
+      updatedAt: new Date()
+    };
+    
+    this.inventoryItems.set(itemId, updatedItem);
+    return updatedItem;
+  }
+
+  async markItemDamaged(itemId: number, quantity: number): Promise<InventoryItem | undefined> {
+    const item = this.inventoryItems.get(itemId);
+    if (!item) return undefined;
+    
+    const newQuantityDamaged = item.quantityDamaged + quantity;
+    const newQuantityAvailable = item.quantityAvailable - quantity;
+    
+    if (newQuantityAvailable < 0) {
+      throw new Error("Not enough available quantity to mark as damaged");
+    }
+    
+    const updatedItem = {
+      ...item,
+      quantityDamaged: newQuantityDamaged,
+      quantityAvailable: newQuantityAvailable,
+      updatedAt: new Date()
+    };
+    
+    this.inventoryItems.set(itemId, updatedItem);
+    return updatedItem;
+  }
+
+  async markItemRepaired(itemId: number, quantity: number): Promise<InventoryItem | undefined> {
+    const item = this.inventoryItems.get(itemId);
+    if (!item) return undefined;
+    
+    const newQuantityDamaged = item.quantityDamaged - quantity;
+    const newQuantityAvailable = item.quantityAvailable + quantity;
+    
+    if (newQuantityDamaged < 0) {
+      throw new Error("Cannot repair more items than are damaged");
+    }
+    
+    const updatedItem = {
+      ...item,
+      quantityDamaged: newQuantityDamaged,
+      quantityAvailable: newQuantityAvailable,
+      updatedAt: new Date()
+    };
+    
+    this.inventoryItems.set(itemId, updatedItem);
+    return updatedItem;
   }
 }
 
