@@ -664,6 +664,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if item exists and is available
       const itemId = validatedData.itemId;
+      const quantityLoaned = validatedData.quantityLoaned || 1;
       const item = await storage.getInventoryItem(itemId);
       
       if (!item) {
@@ -674,11 +675,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Item is not available for loan" });
       }
       
+      // Check if there's enough quantity available
+      if (item.quantityAvailable < quantityLoaned) {
+        return res.status(400).json({ 
+          message: `Insufficient quantity available. Requested: ${quantityLoaned}, Available: ${item.quantityAvailable}` 
+        });
+      }
+      
       // Create the loan
       const loan = await storage.createLoan({
         ...validatedData,
         createdBy: (req.user as any).id
       });
+      
+      // Update inventory quantities (reduce available, increase loaned)
+      await storage.updateItemQuantities(itemId, item.quantityLoaned + quantityLoaned, item.quantityDamaged);
       
       // Create a loan document
       const documentId = `DOC-LOAN-${new Date().getFullYear()}-${String(loan.id).padStart(3, "0")}`;
@@ -701,7 +712,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: "Create",
         entityType: "Loan",
         entityId: loan.id.toString(),
-        details: `Created loan for: ${item.name} (${item.itemId}) to ${req.body.borrowerName || 'Borrower'}`
+        details: `Created loan for: ${quantityLoaned} unit(s) of ${item.name} (${item.itemId}) to ${validatedData.borrowerName || 'Borrower'}`
       });
       
       res.status(201).json(loan);
@@ -734,13 +745,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updatedLoan = await storage.markLoanReturned(id, actualReturnDate);
       
+      // Restore inventory quantities (increase available, decrease loaned)
+      const item = await storage.getInventoryItem(loan.itemId);
+      if (item) {
+        const quantityReturned = loan.quantityLoaned || 1;
+        await storage.updateItemQuantities(
+          loan.itemId, 
+          item.quantityLoaned - quantityReturned, 
+          item.quantityDamaged
+        );
+      }
+      
       // Log the activity
       await storage.createActivityLog({
         userId: (req.user as any).id,
         action: "Update",
         entityType: "Loan",
         entityId: id.toString(),
-        details: `Marked loan as returned: ID ${id}`
+        details: `Marked loan as returned: ${loan.quantityLoaned || 1} unit(s) of item #${loan.itemId}`
       });
       
       res.json(updatedLoan);

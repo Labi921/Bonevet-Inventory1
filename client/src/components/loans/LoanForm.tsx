@@ -41,6 +41,10 @@ const loanSchema = z.object({
     required_error: "Item is required",
     invalid_type_error: "Item ID must be a number",
   }),
+  quantityLoaned: z.number({
+    required_error: "Quantity is required",
+    invalid_type_error: "Quantity must be a number",
+  }).min(1, "Quantity must be at least 1"),
   borrowerName: z.string().min(1, "Borrower name is required"),
   borrowerType: z.string().min(1, "Borrower type is required"),
   borrowerContact: z.string().nullish().or(z.literal('')),
@@ -74,8 +78,10 @@ export default function LoanForm({ preselectedItemId }: LoanFormProps) {
     queryKey: ['/api/inventory'],
   });
   
-  // Filter items to only show available ones
-  const availableItems = Array.isArray(items) ? items.filter((item: any) => item.status === 'Available') : [];
+  // Filter items to only show available ones with quantity > 0
+  const availableItems = Array.isArray(items) ? items.filter((item: any) => 
+    item.status === 'Available' && (item.quantityAvailable || 0) > 0
+  ) : [];
   
   // Get item details by ID
   const getItemById = (id: number) => {
@@ -87,6 +93,7 @@ export default function LoanForm({ preselectedItemId }: LoanFormProps) {
     resolver: zodResolver(loanSchema),
     defaultValues: {
       itemId: preselectedItemId || 0,
+      quantityLoaned: 1,
       borrowerName: '',
       borrowerType: 'Staff',
       borrowerContact: '',
@@ -187,7 +194,7 @@ export default function LoanForm({ preselectedItemId }: LoanFormProps) {
                       ) : (
                         availableItems.map((item: any) => (
                           <SelectItem key={item.id} value={item.id.toString()}>
-                            {item.itemId} - {item.name} ({item.model || 'No model'})
+                            {item.itemId} - {item.name} ({item.model || 'No model'}) - Available: {item.quantityAvailable || 0}
                           </SelectItem>
                         ))
                       )}
@@ -197,8 +204,35 @@ export default function LoanForm({ preselectedItemId }: LoanFormProps) {
                     <div className="mt-2 p-2 bg-blue-50 rounded-md text-sm text-blue-800">
                       <p>Selected: {selectedItem.name} ({selectedItem.itemId})</p>
                       <p>Category: {selectedItem.category}</p>
+                      <p>Available Quantity: {selectedItem.quantityAvailable || 0}</p>
                       {selectedItem.location && <p>Location: {selectedItem.location}</p>}
                     </div>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="quantityLoaned"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Quantity to Loan *</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="1"
+                      max={selectedItem?.quantityAvailable || 999}
+                      placeholder="Enter quantity"
+                      {...field}
+                      onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                    />
+                  </FormControl>
+                  {selectedItem && (
+                    <FormDescription>
+                      Available: {selectedItem.quantityAvailable || 0} units
+                    </FormDescription>
                   )}
                   <FormMessage />
                 </FormItem>
