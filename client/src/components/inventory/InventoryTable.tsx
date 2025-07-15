@@ -160,6 +160,11 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
                             {status}
                           </span>
                         ))}
+                        {item.quantityLifecycled > 0 && (
+                          <div className="text-xs text-purple-600 font-medium">
+                            {item.quantityLifecycled} units lifecycled
+                          </div>
+                        )}
                         {item.lifecycleDate && (
                           <div className="text-xs text-gray-500 mt-1">
                             {format(new Date(item.lifecycleDate), 'MMM dd, yyyy')}
@@ -200,9 +205,11 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
                       <LifecycleManagement
                         itemId={item.id}
                         itemName={item.name}
+                        quantityAvailable={item.quantityAvailable || 0}
                         currentLifecycleStatuses={item.lifecycleStatuses}
                         currentLifecycleDate={item.lifecycleDate}
                         currentLifecycleReason={item.lifecycleReason}
+                        currentQuantityLifecycled={item.quantityLifecycled}
                       />
                     </div>
                   </TableCell>

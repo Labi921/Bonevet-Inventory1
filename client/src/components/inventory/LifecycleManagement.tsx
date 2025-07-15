@@ -18,17 +18,21 @@ import { assetLifecycleStatusEnum } from '@shared/schema';
 interface LifecycleManagementProps {
   itemId: number;
   itemName: string;
+  quantityAvailable: number;
   currentLifecycleStatuses?: string[];
   currentLifecycleDate?: string;
   currentLifecycleReason?: string;
+  currentQuantityLifecycled?: number;
 }
 
 export default function LifecycleManagement({ 
   itemId, 
   itemName, 
+  quantityAvailable,
   currentLifecycleStatuses = [],
   currentLifecycleDate,
-  currentLifecycleReason 
+  currentLifecycleReason,
+  currentQuantityLifecycled = 0
 }: LifecycleManagementProps) {
   const [open, setOpen] = useState(false);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(currentLifecycleStatuses);
@@ -36,6 +40,7 @@ export default function LifecycleManagement({
     currentLifecycleDate ? new Date(currentLifecycleDate) : undefined
   );
   const [reason, setReason] = useState(currentLifecycleReason || '');
+  const [quantity, setQuantity] = useState(1);
   const [calendarOpen, setCalendarOpen] = useState(false);
   
   const { toast } = useToast();
@@ -45,7 +50,8 @@ export default function LifecycleManagement({
     mutationFn: async (data: { 
       lifecycleStatuses: string[], 
       lifecycleDate: string, 
-      lifecycleReason: string 
+      lifecycleReason: string,
+      quantityLifecycled: number
     }) => {
       return apiRequest(`/api/inventory/${itemId}/lifecycle`, {
         method: 'POST',
@@ -104,11 +110,21 @@ export default function LifecycleManagement({
       });
       return;
     }
+    
+    if (quantity <= 0 || quantity > quantityAvailable) {
+      toast({
+        title: "Error",
+        description: `Quantity must be between 1 and ${quantityAvailable}`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     updateLifecycleMutation.mutate({
       lifecycleStatuses: selectedStatuses,
       lifecycleDate: format(date, 'yyyy-MM-dd'),
       lifecycleReason: reason.trim(),
+      quantityLifecycled: quantity,
     });
   };
 
@@ -132,6 +148,9 @@ export default function LifecycleManagement({
             <p className="text-sm text-gray-600">
               Update the lifecycle status for this item. You can select multiple statuses that apply.
             </p>
+            <p className="text-sm text-blue-600 mt-1">
+              Available quantity: {quantityAvailable} units
+            </p>
           </div>
           
           <div className="space-y-3">
@@ -153,6 +172,22 @@ export default function LifecycleManagement({
                 </div>
               ))}
             </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label className="text-base font-medium">Quantity</Label>
+            <Input
+              type="number"
+              value={quantity}
+              onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+              min={1}
+              max={quantityAvailable}
+              className="w-full"
+              placeholder="Enter quantity"
+            />
+            <p className="text-xs text-gray-500">
+              How many units of this item are going through lifecycle changes? (Max: {quantityAvailable})
+            </p>
           </div>
           
           <div className="space-y-2">
@@ -201,6 +236,11 @@ export default function LifecycleManagement({
                 <p className="text-sm text-gray-600">
                   Status: {currentLifecycleStatuses.join(', ')}
                 </p>
+                {currentQuantityLifecycled > 0 && (
+                  <p className="text-sm text-gray-600">
+                    Quantity Lifecycled: {currentQuantityLifecycled} units
+                  </p>
+                )}
                 {currentLifecycleDate && (
                   <p className="text-sm text-gray-600">
                     Date: {format(new Date(currentLifecycleDate), 'PPP')}

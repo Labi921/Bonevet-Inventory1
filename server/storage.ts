@@ -33,7 +33,7 @@ export interface IStorage {
   markItemRepaired(itemId: number, quantity: number): Promise<InventoryItem | undefined>;
   
   // Asset Lifecycle Management
-  updateItemLifecycle(itemId: number, lifecycleStatuses: string[], lifecycleDate: string, lifecycleReason: string): Promise<InventoryItem | undefined>;
+  updateItemLifecycle(itemId: number, lifecycleStatuses: string[], lifecycleDate: string, lifecycleReason: string, quantityLifecycled: number): Promise<InventoryItem | undefined>;
 
   // Loan Group Operations
   getLoanGroup(id: number): Promise<LoanGroup & { items: (Loan & { item: InventoryItem })[] }>;
@@ -623,15 +623,22 @@ export class MemStorage implements IStorage {
     return updatedItem;
   }
 
-  async updateItemLifecycle(itemId: number, lifecycleStatuses: string[], lifecycleDate: string, lifecycleReason: string): Promise<InventoryItem | undefined> {
+  async updateItemLifecycle(itemId: number, lifecycleStatuses: string[], lifecycleDate: string, lifecycleReason: string, quantityLifecycled: number): Promise<InventoryItem | undefined> {
     const item = this.inventoryItems.get(itemId);
     if (!item) return undefined;
+    
+    // Validate quantity
+    if (quantityLifecycled > item.quantityAvailable) {
+      throw new Error("Cannot lifecycle more items than are available");
+    }
     
     const updatedItem = {
       ...item,
       lifecycleStatuses,
       lifecycleDate,
       lifecycleReason,
+      quantityLifecycled: (item.quantityLifecycled || 0) + quantityLifecycled,
+      quantityAvailable: item.quantityAvailable - quantityLifecycled,
       updatedAt: new Date()
     };
     

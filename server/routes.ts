@@ -430,7 +430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/inventory/:id/lifecycle", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const { lifecycleStatuses, lifecycleDate, lifecycleReason } = req.body;
+      const { lifecycleStatuses, lifecycleDate, lifecycleReason, quantityLifecycled } = req.body;
       
       if (!lifecycleStatuses || !Array.isArray(lifecycleStatuses) || lifecycleStatuses.length === 0) {
         return res.status(400).json({ message: "At least one lifecycle status must be selected" });
@@ -440,7 +440,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Lifecycle date and reason are required" });
       }
       
-      const updatedItem = await storage.updateItemLifecycle(id, lifecycleStatuses, lifecycleDate, lifecycleReason);
+      if (!quantityLifecycled || quantityLifecycled <= 0) {
+        return res.status(400).json({ message: "Quantity must be a positive number" });
+      }
+      
+      const updatedItem = await storage.updateItemLifecycle(id, lifecycleStatuses, lifecycleDate, lifecycleReason, quantityLifecycled);
       
       if (!updatedItem) {
         return res.status(404).json({ message: "Item not found" });
@@ -452,7 +456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: "Lifecycle Update",
         entityType: "InventoryItem",
         entityId: id.toString(),
-        details: `Updated lifecycle status for ${updatedItem.name}: ${lifecycleStatuses.join(', ')} - ${lifecycleReason}`
+        details: `Updated lifecycle status for ${updatedItem.name}: ${quantityLifecycled} unit(s) - ${lifecycleStatuses.join(', ')} - ${lifecycleReason}`
       });
       
       res.json(updatedItem);
