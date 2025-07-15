@@ -53,10 +53,7 @@ export default function LifecycleManagement({
       lifecycleReason: string,
       quantityLifecycled: number
     }) => {
-      return apiRequest(`/api/inventory/${itemId}/lifecycle`, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return apiRequest('POST', `/api/inventory/${itemId}/lifecycle`, data);
     },
     onSuccess: () => {
       toast({
