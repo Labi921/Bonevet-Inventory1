@@ -50,6 +50,14 @@ export const itemUsageEnum = z.enum([
   "Others"
 ]);
 
+// Asset Lifecycle Status Enum
+export const assetLifecycleStatusEnum = z.enum([
+  "Decommissioned",
+  "Damaged Beyond Repair (DBR)",
+  "Scrapped or Disposed",
+  "Written-off"
+]);
+
 // Inventory Item Model
 export const inventoryItems = pgTable("inventory_items", {
   id: serial("id").primaryKey(),
@@ -67,6 +75,12 @@ export const inventoryItems = pgTable("inventory_items", {
   usage: text("usage").default("None"),
   notes: text("notes"),
   imagePath: text("image_path"), // Path to uploaded image
+  
+  // Asset Lifecycle Tracking
+  lifecycleStatuses: text("lifecycle_statuses").array(), // Array of lifecycle statuses
+  lifecycleDate: date("lifecycle_date"), // Date when lifecycle actions were taken
+  lifecycleReason: text("lifecycle_reason"), // Reason for lifecycle actions
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -78,6 +92,9 @@ export const insertInventoryItemSchema = createInsertSchema(inventoryItems)
     status: itemStatusEnum,
     usage: itemUsageEnum,
     itemId: z.string().optional(),
+    lifecycleStatuses: z.array(assetLifecycleStatusEnum).optional(),
+    lifecycleDate: z.string().optional(),
+    lifecycleReason: z.string().optional(),
   });
 
 // Loan Group Model (for grouping multiple items in one loan)

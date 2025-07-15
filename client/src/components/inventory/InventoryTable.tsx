@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/pagination';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import LifecycleManagement from './LifecycleManagement';
 
 interface InventoryTableProps {
   items: any[];
@@ -79,6 +80,7 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
               <TableHead>Location</TableHead>
               <TableHead className="w-[80px]">Quantity</TableHead>
               <TableHead>Price</TableHead>
+              <TableHead>Lifecycle</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -106,6 +108,9 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
                   </TableCell>
                   <TableCell>
                     <div className="w-16 h-5 bg-gray-200 animate-pulse rounded"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="w-20 h-5 bg-gray-200 animate-pulse rounded"></div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end space-x-2">
@@ -144,6 +149,27 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
                     </div>
                   </TableCell>
                   <TableCell>{item.price ? `€${item.price.toFixed(2)}` : '-'}</TableCell>
+                  <TableCell>
+                    {item.lifecycleStatuses && item.lifecycleStatuses.length > 0 ? (
+                      <div className="space-y-1">
+                        {item.lifecycleStatuses.map((status: string, index: number) => (
+                          <span 
+                            key={index}
+                            className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800"
+                          >
+                            {status}
+                          </span>
+                        ))}
+                        {item.lifecycleDate && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {format(new Date(item.lifecycleDate), 'MMM dd, yyyy')}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex space-x-1">
                       <Button 
@@ -171,13 +197,20 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
                       >
                         Loan
                       </Button>
+                      <LifecycleManagement
+                        itemId={item.id}
+                        itemName={item.name}
+                        currentLifecycleStatuses={item.lifecycleStatuses}
+                        currentLifecycleDate={item.lifecycleDate}
+                        currentLifecycleReason={item.lifecycleReason}
+                      />
                     </div>
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={9} className="h-24 text-center">
                   {items?.length === 0 ? 'No items found. Try a different search or add a new item.' : 'Error loading inventory data.'}
                 </TableCell>
               </TableRow>

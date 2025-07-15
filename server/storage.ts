@@ -31,6 +31,9 @@ export interface IStorage {
   updateItemQuantities(itemId: number, quantityLoaned: number, quantityDamaged: number): Promise<InventoryItem | undefined>;
   markItemDamaged(itemId: number, quantity: number): Promise<InventoryItem | undefined>;
   markItemRepaired(itemId: number, quantity: number): Promise<InventoryItem | undefined>;
+  
+  // Asset Lifecycle Management
+  updateItemLifecycle(itemId: number, lifecycleStatuses: string[], lifecycleDate: string, lifecycleReason: string): Promise<InventoryItem | undefined>;
 
   // Loan Group Operations
   getLoanGroup(id: number): Promise<LoanGroup & { items: (Loan & { item: InventoryItem })[] }>;
@@ -613,6 +616,22 @@ export class MemStorage implements IStorage {
       ...item,
       quantityDamaged: newQuantityDamaged,
       quantityAvailable: newQuantityAvailable,
+      updatedAt: new Date()
+    };
+    
+    this.inventoryItems.set(itemId, updatedItem);
+    return updatedItem;
+  }
+
+  async updateItemLifecycle(itemId: number, lifecycleStatuses: string[], lifecycleDate: string, lifecycleReason: string): Promise<InventoryItem | undefined> {
+    const item = this.inventoryItems.get(itemId);
+    if (!item) return undefined;
+    
+    const updatedItem = {
+      ...item,
+      lifecycleStatuses,
+      lifecycleDate,
+      lifecycleReason,
       updatedAt: new Date()
     };
     

@@ -426,6 +426,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update item lifecycle status
+  app.post("/api/inventory/:id/lifecycle", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { lifecycleStatuses, lifecycleDate, lifecycleReason } = req.body;
+      
+      if (!lifecycleStatuses || !Array.isArray(lifecycleStatuses) || lifecycleStatuses.length === 0) {
+        return res.status(400).json({ message: "At least one lifecycle status must be selected" });
+      }
+      
+      if (!lifecycleDate || !lifecycleReason) {
+        return res.status(400).json({ message: "Lifecycle date and reason are required" });
+      }
+      
+      const updatedItem = await storage.updateItemLifecycle(id, lifecycleStatuses, lifecycleDate, lifecycleReason);
+      
+      if (!updatedItem) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+      
+      // Log the activity
+      await storage.createActivityLog({
+        userId: (req.user as any).id,
+        action: "Lifecycle Update",
+        entityType: "InventoryItem",
+        entityId: id.toString(),
+        details: `Updated lifecycle status for ${updatedItem.name}: ${lifecycleStatuses.join(', ')} - ${lifecycleReason}`
+      });
+      
+      res.json(updatedItem);
+    } catch (error) {
+      console.error('Error updating item lifecycle:', error);
+      res.status(500).json({ message: error.message || "Failed to update item lifecycle" });
+    }
+  });
+
   // Loan Group routes
   app.get("/api/loan-groups", requireAuth, async (req, res) => {
     try {
