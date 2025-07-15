@@ -235,8 +235,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/inventory", requireAuth, upload.single('image'), async (req, res) => {
     try {
+      // Convert form data fields to proper types
+      const formData = { ...req.body };
+      
+      // Convert quantity to number
+      if (formData.quantity) {
+        formData.quantity = parseInt(formData.quantity);
+      }
+      
+      // Convert price to number
+      if (formData.price && formData.price !== '') {
+        formData.price = parseFloat(formData.price);
+      } else {
+        delete formData.price; // Remove empty price field
+      }
+      
       // Validate the form data
-      const validatedData = insertInventoryItemSchema.parse(req.body);
+      const validatedData = insertInventoryItemSchema.parse(formData);
       
       // Generate a unique BVGJK#### ID if not provided
       if (!validatedData.itemId) {
@@ -283,8 +298,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Item not found" });
       }
       
-      // Prepare update data
+      // Convert form data fields to proper types
       const updateData = { ...req.body };
+      
+      // Convert quantity to number
+      if (updateData.quantity) {
+        updateData.quantity = parseInt(updateData.quantity);
+      }
+      
+      // Convert price to number
+      if (updateData.price && updateData.price !== '') {
+        updateData.price = parseFloat(updateData.price);
+      } else if (updateData.price === '') {
+        delete updateData.price; // Remove empty price field
+      }
       
       // Add image path if uploaded
       if (req.file) {
