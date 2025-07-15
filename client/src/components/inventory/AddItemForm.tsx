@@ -110,10 +110,16 @@ export default function AddItemForm() {
           formData.append('image', imageFile);
         }
         
-        const response = await apiRequest('/api/inventory', {
+        const response = await fetch('/api/inventory', {
           method: 'POST',
           body: formData,
+          credentials: 'include',
         });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to create item');
+        }
         const result = await response.json();
         console.log('Success response:', result);
         return result;

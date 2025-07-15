@@ -130,10 +130,18 @@ export default function EditItemForm({ id }: EditItemFormProps) {
         formData.append('image', imageFile);
       }
       
-      return apiRequest(`/api/inventory/${id}`, {
+      const response = await fetch(`/api/inventory/${id}`, {
         method: 'PUT',
         body: formData,
+        credentials: 'include',
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update item');
+      }
+      
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
