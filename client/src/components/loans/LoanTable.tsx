@@ -3,6 +3,7 @@ import { format, isAfter, parseISO } from 'date-fns';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { Eye } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -44,6 +45,7 @@ export default function LoanTable({ loans, isLoading }: LoanTableProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [returnLoanId, setReturnLoanId] = useState<number | null>(null);
+  const [viewLoanId, setViewLoanId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   
@@ -202,44 +204,119 @@ export default function LoanTable({ loans, isLoading }: LoanTableProps) {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      {loan.status !== 'Returned' ? (
+                      <div className="flex justify-end space-x-2">
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button 
                               variant="outline" 
                               size="sm" 
-                              className="text-green-600 hover:text-green-700"
+                              className="text-blue-600 hover:text-blue-700"
                             >
-                              Return Item
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
                             </Button>
                           </AlertDialogTrigger>
-                          <AlertDialogContent>
+                          <AlertDialogContent className="max-w-2xl">
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Return Item</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to mark this item as returned? This will update the inventory status to available.
+                              <AlertDialogTitle>Loan Details</AlertDialogTitle>
+                              <AlertDialogDescription asChild>
+                                <div className="space-y-4">
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <h4 className="font-semibold text-gray-900">Item Information</h4>
+                                      <p className="text-sm text-gray-600">
+                                        {loan.itemName || getItemName(loan.itemId)}
+                                      </p>
+                                      <p className="text-sm text-gray-600">
+                                        Quantity: {loan.quantityLoaned || 1}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-semibold text-gray-900">Borrower Information</h4>
+                                      <p className="text-sm text-gray-600">
+                                        Name: {loan.borrowerName || 'Unknown'}
+                                      </p>
+                                      <p className="text-sm text-gray-600">
+                                        Type: {loan.borrowerType || 'Individual'}
+                                      </p>
+                                      {loan.borrowerContact && (
+                                        <p className="text-sm text-gray-600">
+                                          Contact: {loan.borrowerContact}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <h4 className="font-semibold text-gray-900">Loan Dates</h4>
+                                      <p className="text-sm text-gray-600">
+                                        Out: {loan.loanDate ? format(new Date(loan.loanDate), 'MMM dd, yyyy') : '—'}
+                                      </p>
+                                      <p className="text-sm text-gray-600">
+                                        Expected Return: {loan.expectedReturnDate ? format(new Date(loan.expectedReturnDate), 'MMM dd, yyyy') : '—'}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-semibold text-gray-900">Status</h4>
+                                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(status)}`}>
+                                        {status}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {loan.notes && (
+                                    <div>
+                                      <h4 className="font-semibold text-gray-900">Notes</h4>
+                                      <p className="text-sm text-gray-600">{loan.notes}</p>
+                                    </div>
+                                  )}
+                                </div>
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => handleReturnLoan(loan.id)}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                Return Item
-                              </AlertDialogAction>
+                              <AlertDialogCancel>Close</AlertDialogCancel>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
-                      ) : (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          disabled
-                        >
-                          Already Returned
-                        </Button>
-                      )}
+                        
+                        {loan.status !== 'Returned' ? (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="text-green-600 hover:text-green-700"
+                              >
+                                Return Item
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Return Item</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to mark this item as returned? This will update the inventory status to available.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleReturnLoan(loan.id)}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  Return Item
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        ) : (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            disabled
+                          >
+                            Already Returned
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

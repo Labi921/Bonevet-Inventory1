@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Download, Search, Package, Users } from 'lucide-react';
+import { PlusCircle, Download, Search, Package, Users, Eye } from 'lucide-react';
 import { format, isAfter, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -297,45 +297,182 @@ export default function Loans() {
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          {group.status !== 'Returned' ? (
+                          <div className="flex justify-end space-x-2">
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button 
                                   variant="outline" 
                                   size="sm" 
-                                  className="text-green-600 hover:text-green-700"
+                                  className="text-blue-600 hover:text-blue-700"
                                 >
-                                  Return All Items
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  View
                                 </Button>
                               </AlertDialogTrigger>
-                              <AlertDialogContent>
+                              <AlertDialogContent className="max-w-4xl">
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Return All Items</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to mark all items in this loan group as returned? 
-                                    This will update the inventory status for all loaned items.
+                                  <AlertDialogTitle>Multi-Item Loan Details</AlertDialogTitle>
+                                  <AlertDialogDescription asChild>
+                                    <div className="space-y-6">
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                          <h4 className="font-semibold text-gray-900">Loan Group Information</h4>
+                                          <p className="text-sm text-gray-600">
+                                            ID: {group.loanGroupId}
+                                          </p>
+                                          <p className="text-sm text-gray-600">
+                                            Status: <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                              group.status === 'Returned' 
+                                                ? 'bg-green-100 text-green-800' 
+                                                : group.expectedReturnDate && isAfter(new Date(), new Date(group.expectedReturnDate))
+                                                ? 'bg-red-100 text-red-800'
+                                                : 'bg-amber-100 text-amber-800'
+                                            }`}>
+                                              {group.status === 'Returned' 
+                                                ? 'Returned' 
+                                                : group.expectedReturnDate && isAfter(new Date(), new Date(group.expectedReturnDate))
+                                                ? 'Overdue'
+                                                : 'Ongoing'}
+                                            </span>
+                                          </p>
+                                        </div>
+                                        <div>
+                                          <h4 className="font-semibold text-gray-900">Borrower Information</h4>
+                                          <p className="text-sm text-gray-600">
+                                            Name: {group.borrowerName}
+                                          </p>
+                                          <p className="text-sm text-gray-600">
+                                            Type: {group.borrowerType}
+                                          </p>
+                                          {group.borrowerContact && (
+                                            <p className="text-sm text-gray-600">
+                                              Contact: {group.borrowerContact}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                          <h4 className="font-semibold text-gray-900">Loan Dates</h4>
+                                          <p className="text-sm text-gray-600">
+                                            Out: {group.loanDate ? format(new Date(group.loanDate), 'MMM dd, yyyy') : '—'}
+                                          </p>
+                                          <p className="text-sm text-gray-600">
+                                            Expected Return: {group.expectedReturnDate ? format(new Date(group.expectedReturnDate), 'MMM dd, yyyy') : '—'}
+                                          </p>
+                                        </div>
+                                        <div>
+                                          <h4 className="font-semibold text-gray-900">Items Count</h4>
+                                          <p className="text-sm text-gray-600">
+                                            Total Items: {Array.isArray(group.items) ? group.items.length : "Unknown"}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      
+                                      {group.notes && (
+                                        <div>
+                                          <h4 className="font-semibold text-gray-900">Notes</h4>
+                                          <p className="text-sm text-gray-600">{group.notes}</p>
+                                        </div>
+                                      )}
+                                      
+                                      <div>
+                                        <h4 className="font-semibold text-gray-900 mb-2">Loaned Items</h4>
+                                        <div className="border rounded-lg overflow-hidden">
+                                          <Table>
+                                            <TableHeader>
+                                              <TableRow>
+                                                <TableHead className="w-[100px]">Item ID</TableHead>
+                                                <TableHead>Name</TableHead>
+                                                <TableHead>Quantity</TableHead>
+                                                <TableHead>Status</TableHead>
+                                              </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                              {Array.isArray(group.items) && group.items.length > 0 ? (
+                                                group.items.map((item: any, idx: number) => (
+                                                  <TableRow key={idx}>
+                                                    <TableCell className="font-medium">
+                                                      {item.itemId || `Item #${item.id}`}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                      {item.name || 'Unknown Item'}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                      {item.quantityLoaned || 1}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                                        item.status === 'Returned' 
+                                                          ? 'bg-green-100 text-green-800' 
+                                                          : 'bg-amber-100 text-amber-800'
+                                                      }`}>
+                                                        {item.status || 'Ongoing'}
+                                                      </span>
+                                                    </TableCell>
+                                                  </TableRow>
+                                                ))
+                                              ) : (
+                                                <TableRow>
+                                                  <TableCell colSpan={4} className="h-24 text-center">
+                                                    No items found for this loan group.
+                                                  </TableCell>
+                                                </TableRow>
+                                              )}
+                                            </TableBody>
+                                          </Table>
+                                        </div>
+                                      </div>
+                                    </div>
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    onClick={() => returnLoanGroup.mutate(group.id)}
-                                    className="bg-green-600 hover:bg-green-700"
-                                  >
-                                    Return All Items
-                                  </AlertDialogAction>
+                                  <AlertDialogCancel>Close</AlertDialogCancel>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
-                          ) : (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              disabled
-                            >
-                              Already Returned
-                            </Button>
-                          )}
+                            
+                            {group.status !== 'Returned' ? (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="text-green-600 hover:text-green-700"
+                                  >
+                                    Return All Items
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Return All Items</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to mark all items in this loan group as returned? 
+                                      This will update the inventory status for all loaned items.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => returnLoanGroup.mutate(group.id)}
+                                      className="bg-green-600 hover:bg-green-700"
+                                    >
+                                      Return All Items
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            ) : (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                disabled
+                              >
+                                Already Returned
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
