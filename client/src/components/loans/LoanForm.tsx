@@ -78,9 +78,9 @@ export default function LoanForm({ preselectedItemId }: LoanFormProps) {
     queryKey: ['/api/inventory'],
   });
   
-  // Filter items to only show available ones with quantity > 0
+  // Filter items to only show ones with quantity > 0 (regardless of status for quantity-based loans)
   const availableItems = Array.isArray(items) ? items.filter((item: any) => 
-    item.status === 'Available' && (item.quantityAvailable || 0) > 0
+    (item.quantityAvailable || 0) > 0
   ) : [];
   
   // Get item details by ID

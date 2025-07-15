@@ -662,7 +662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate the loan data
       const validatedData = insertLoanSchema.parse(loanData);
       
-      // Check if item exists and is available
+      // Check if item exists and has sufficient quantity
       const itemId = validatedData.itemId;
       const quantityLoaned = validatedData.quantityLoaned || 1;
       const item = await storage.getInventoryItem(itemId);
@@ -671,11 +671,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Item not found" });
       }
       
-      if (item.status !== "Available") {
-        return res.status(400).json({ message: "Item is not available for loan" });
-      }
-      
-      // Check if there's enough quantity available
+      // Check if there's enough quantity available (don't check status for quantity-based loans)
       if (item.quantityAvailable < quantityLoaned) {
         return res.status(400).json({ 
           message: `Insufficient quantity available. Requested: ${quantityLoaned}, Available: ${item.quantityAvailable}` 

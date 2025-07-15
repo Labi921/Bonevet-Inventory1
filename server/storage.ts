@@ -547,11 +547,28 @@ export class MemStorage implements IStorage {
     const item = this.inventoryItems.get(itemId);
     if (!item) return undefined;
     
+    const quantityAvailable = item.quantity - quantityLoaned - quantityDamaged;
+    
+    // Determine status based on quantities
+    let status = "Available";
+    if (quantityAvailable <= 0) {
+      if (quantityLoaned > 0 && quantityDamaged === 0) {
+        status = "Loaned Out";
+      } else if (quantityDamaged > 0 && quantityLoaned === 0) {
+        status = "Damaged";
+      } else if (quantityDamaged > 0 && quantityLoaned > 0) {
+        status = "Partially Available";
+      }
+    } else if (quantityLoaned > 0 || quantityDamaged > 0) {
+      status = "Partially Available";
+    }
+    
     const updatedItem = {
       ...item,
       quantityLoaned,
       quantityDamaged,
-      quantityAvailable: item.quantity - quantityLoaned - quantityDamaged,
+      quantityAvailable,
+      status,
       updatedAt: new Date()
     };
     

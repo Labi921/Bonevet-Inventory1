@@ -55,6 +55,8 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
         return 'bg-amber-100 text-amber-800';
       case 'Loaned Out':
         return 'bg-yellow-100 text-yellow-800';
+      case 'Partially Available':
+        return 'bg-orange-100 text-orange-800';
       case 'Damaged':
         return 'bg-red-100 text-red-800';
       case 'Maintenance':

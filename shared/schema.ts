@@ -37,6 +37,7 @@ export const itemStatusEnum = z.enum([
   "Available",
   "In Use",
   "Loaned Out",
+  "Partially Available",
   "Damaged",
   "Maintenance"
 ]);
