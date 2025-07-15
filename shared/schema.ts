@@ -62,6 +62,7 @@ export const inventoryItems = pgTable("inventory_items", {
   price: real("price"),
   usage: text("usage").default("None"),
   notes: text("notes"),
+  imagePath: text("image_path"), // Path to uploaded image
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

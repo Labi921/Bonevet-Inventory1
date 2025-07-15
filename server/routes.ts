@@ -15,10 +15,42 @@ import {
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
+import multer from "multer";
+import path from "path";
 
 const Session = MemoryStore(session);
 
+// Configure multer for file uploads
+const storage_config = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, './uploads/'); // Make sure this directory exists
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage_config,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    const filetypes = /jpeg|jpg|png|gif|webp/;
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = filetypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve uploaded images
+  app.use('/uploads', express.static('uploads'));
+  
   // Session setup
   app.use(
     session({
@@ -201,18 +233,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/inventory", requireAuth, validateSchema(insertInventoryItemSchema), async (req, res) => {
+  app.post("/api/inventory", requireAuth, upload.single('image'), async (req, res) => {
     try {
+      // Validate the form data
+      const validatedData = insertInventoryItemSchema.parse(req.body);
+      
       // Generate a unique BVGJK#### ID if not provided
-      if (!req.body.itemId) {
+      if (!validatedData.itemId) {
         const items = await storage.listInventoryItems();
         const lastId = items.length > 0 
           ? parseInt(items[items.length - 1].itemId.replace("BVGJK", "")) 
           : 0;
-        req.body.itemId = `BVGJK${String(lastId + 1).padStart(4, "0")}`;
+        validatedData.itemId = `BVGJK${String(lastId + 1).padStart(4, "0")}`;
       }
       
-      const item = await storage.createInventoryItem(req.body);
+      // Add image path if uploaded
+      if (req.file) {
+        validatedData.imagePath = `/uploads/${req.file.filename}`;
+      }
+      
+      const item = await storage.createInventoryItem(validatedData);
       
       // Log the activity
       await storage.createActivityLog({
@@ -225,11 +265,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(item);
     } catch (error) {
+      console.error('Error creating inventory item:', error);
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
       res.status(500).json({ message: "Failed to create inventory item" });
     }
   });
 
-  app.put("/api/inventory/:id", requireAuth, async (req, res) => {
+  app.put("/api/inventory/:id", requireAuth, upload.single('image'), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const existingItem = await storage.getInventoryItem(id);
@@ -238,7 +283,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Item not found" });
       }
       
-      const updatedItem = await storage.updateInventoryItem(id, req.body);
+      // Prepare update data
+      const updateData = { ...req.body };
+      
+      // Add image path if uploaded
+      if (req.file) {
+        updateData.imagePath = `/uploads/${req.file.filename}`;
+      }
+      
+      const updatedItem = await storage.updateInventoryItem(id, updateData);
       
       // Log the activity
       await storage.createActivityLog({
@@ -251,6 +304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(updatedItem);
     } catch (error) {
+      console.error('Error updating inventory item:', error);
       res.status(500).json({ message: "Failed to update inventory item" });
     }
   });

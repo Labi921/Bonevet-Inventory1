@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { itemCategoryEnum, itemStatusEnum, itemUsageEnum } from '@/lib/utils/categoryUtils';
@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -29,12 +28,16 @@ import {
 } from '@/components/ui/select';
 import { ArrowLeft, Save, Upload } from 'lucide-react';
 
-// Define a simpler form schema that matches server expectations
+interface EditItemFormProps {
+  id: string;
+}
+
+// Define form schema
 const formSchema = z.object({
   name: z.string().min(1, "Item name is required"),
   model: z.string().optional(),
   category: itemCategoryEnum,
-  status: itemStatusEnum.default("Available"),
+  status: itemStatusEnum,
   location: z.string().optional(),
   quantity: z.union([
     z.number().int().positive("Quantity must be a positive integer"),
@@ -51,18 +54,22 @@ const formSchema = z.object({
       return isNaN(num) ? undefined : num;
     }).optional()
   ]).optional(),
-  usage: itemUsageEnum.default("None"),
+  usage: itemUsageEnum,
   notes: z.string().optional(),
 });
 
-export default function AddItemForm() {
+export default function EditItemForm({ id }: EditItemFormProps) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isGeneratingDocument, setIsGeneratingDocument] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   
+  // Fetch current item data
+  const { data: item, isLoading } = useQuery({
+    queryKey: [`/api/inventory/${id}`],
+  });
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -77,7 +84,24 @@ export default function AddItemForm() {
       notes: '',
     },
   });
-  
+
+  // Update form when item data is loaded
+  useEffect(() => {
+    if (item) {
+      form.reset({
+        name: item.name || '',
+        model: item.model || '',
+        category: item.category || 'Equipment',
+        status: item.status || 'Available',
+        location: item.location || '',
+        quantity: item.quantity || 1,
+        price: item.price || undefined,
+        usage: item.usage || 'None',
+        notes: item.notes || '',
+      });
+    }
+  }, [item, form]);
+
   // Handle image upload
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -88,98 +112,120 @@ export default function AddItemForm() {
       reader.readAsDataURL(file);
     }
   };
-  
-  // Create item mutation
-  const createItem = useMutation({
+
+  // Update item mutation
+  const updateItem = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
-      try {
-        console.log('Submitting data:', data); // Debug the submitted data
-        
-        // Create FormData for file upload
-        const formData = new FormData();
-        
-        // Add form fields
-        Object.entries(data).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            formData.append(key, value.toString());
-          }
-        });
-        
-        // Add image if provided
-        if (imageFile) {
-          formData.append('image', imageFile);
+      const formData = new FormData();
+      
+      // Add form fields
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formData.append(key, value.toString());
         }
-        
-        const response = await apiRequest('/api/inventory', {
-          method: 'POST',
-          body: formData,
-        });
-        const result = await response.json();
-        console.log('Success response:', result);
-        return result;
-      } catch (error) {
-        console.error('API request error:', error);
-        throw error;
+      });
+      
+      // Add image if provided
+      if (imageFile) {
+        formData.append('image', imageFile);
       }
+      
+      return apiRequest(`/api/inventory/${id}`, {
+        method: 'PUT',
+        body: formData,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/inventory/${id}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/inventory/stats'] });
       queryClient.invalidateQueries({ queryKey: ['/api/activity/recent'] });
       
       toast({
-        title: 'Item Added',
-        description: 'The item has been added to the inventory successfully.',
+        title: "Success",
+        description: "Item updated successfully",
       });
       
-      // Generate acquisition document if requested
-      if (isGeneratingDocument) {
-        // This would be replaced with actual document generation logic
-        setTimeout(() => {
-          toast({
-            title: 'Document Generated',
-            description: 'Acquisition document has been generated and is ready for signing.',
-          });
-          navigate('/documents');
-        }, 1000);
-      } else {
-        navigate('/inventory');
-      }
+      navigate('/inventory');
     },
     onError: (error: any) => {
-      const errorMessage = error?.message || 'Failed to add the item. Please try again.';
       toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
+        title: "Error",
+        description: error.message || "Failed to update item",
+        variant: "destructive",
       });
-      console.error('Error adding item:', error);
     },
   });
-  
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    createItem.mutate(values);
+
+  const onSubmit = (data: z.infer<typeof formSchema>) => {
+    updateItem.mutate(data);
   };
-  
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div className="space-y-1.5">
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={() => navigate('/inventory')}
-            className="mb-2"
+            className="w-fit mb-2"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Inventory
           </Button>
-          <CardTitle>Add New Item</CardTitle>
-        </div>
+          <div className="h-8 w-64 bg-gray-200 animate-pulse rounded"></div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="h-10 bg-gray-200 animate-pulse rounded"></div>
+            <div className="h-10 bg-gray-200 animate-pulse rounded"></div>
+            <div className="h-10 bg-gray-200 animate-pulse rounded"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!item) {
+    return (
+      <Card>
+        <CardHeader>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate('/inventory')}
+            className="w-fit mb-2"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Inventory
+          </Button>
+          <CardTitle>Item Not Found</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>The item you're trying to edit could not be found.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="max-w-2xl mx-auto">
+      <CardHeader>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => navigate('/inventory')}
+          className="w-fit mb-2"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Inventory
+        </Button>
+        <CardTitle>Edit Item: {item.name}</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -202,14 +248,14 @@ export default function AddItemForm() {
                   <FormItem>
                     <FormLabel>Model</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter model name/number" {...field} />
+                      <Input placeholder="Enter model number" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -217,20 +263,17 @@ export default function AddItemForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category *</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Electronics">Electronics</SelectItem>
+                        <SelectItem value="Furniture">Furniture</SelectItem>
                         <SelectItem value="Equipment">Equipment</SelectItem>
                         <SelectItem value="Tools">Tools</SelectItem>
-                        <SelectItem value="Furniture">Furniture</SelectItem>
+                        <SelectItem value="Electronics">Electronics</SelectItem>
                         <SelectItem value="Software">Software</SelectItem>
                         <SelectItem value="Other">Other</SelectItem>
                       </SelectContent>
@@ -246,10 +289,7 @@ export default function AddItemForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Status *</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select status" />
@@ -268,7 +308,7 @@ export default function AddItemForm() {
                 )}
               />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -277,56 +317,7 @@ export default function AddItemForm() {
                   <FormItem>
                     <FormLabel>Location</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter current location" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="usage"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>In Use Of</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select usage" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="None">None</SelectItem>
-                        <SelectItem value="Staff">Staff</SelectItem>
-                        <SelectItem value="Members">Members</SelectItem>
-                        <SelectItem value="Others">Others</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Price (€)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        {...field}
-                      />
+                      <Input placeholder="Enter location" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -338,13 +329,14 @@ export default function AddItemForm() {
                 name="quantity"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Quantity</FormLabel>
+                    <FormLabel>Quantity *</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        min="1"
-                        step="1"
+                      <Input 
+                        type="number" 
+                        min="1" 
+                        placeholder="Enter quantity"
                         {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value))}
                       />
                     </FormControl>
                     <FormMessage />
@@ -352,17 +344,64 @@ export default function AddItemForm() {
                 )}
               />
             </div>
-            
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Price (€)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        min="0" 
+                        placeholder="Enter price"
+                        {...field}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="usage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Usage</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select usage" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="None">None</SelectItem>
+                        <SelectItem value="Light">Light</SelectItem>
+                        <SelectItem value="Medium">Medium</SelectItem>
+                        <SelectItem value="Heavy">Heavy</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Additional Notes</FormLabel>
+                  <FormLabel>Notes</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Enter any additional information about the item"
-                      className="min-h-[100px]"
+                      placeholder="Enter any additional notes"
+                      className="resize-none"
                       {...field}
                     />
                   </FormControl>
@@ -370,7 +409,7 @@ export default function AddItemForm() {
                 </FormItem>
               )}
             />
-            
+
             {/* Image Upload Section */}
             <div className="space-y-2">
               <FormLabel>Item Image</FormLabel>
@@ -411,22 +450,7 @@ export default function AddItemForm() {
                 )}
               </div>
             </div>
-            
-            <div className="flex items-center">
-              <div className="flex items-center space-x-2 mr-4">
-                <input
-                  type="checkbox"
-                  id="generate-document"
-                  checked={isGeneratingDocument}
-                  onChange={(e) => setIsGeneratingDocument(e.target.checked)}
-                  className="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50"
-                />
-                <label htmlFor="generate-document" className="text-sm text-gray-700">
-                  Generate acquisition document
-                </label>
-              </div>
-            </div>
-            
+
             <div className="flex justify-end space-x-2">
               <Button
                 type="button"
@@ -437,12 +461,12 @@ export default function AddItemForm() {
               </Button>
               <Button 
                 type="submit"
-                disabled={createItem.isPending}
+                disabled={updateItem.isPending}
               >
-                {createItem.isPending ? 'Saving...' : (
+                {updateItem.isPending ? 'Saving...' : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    Save Item
+                    Update Item
                   </>
                 )}
               </Button>

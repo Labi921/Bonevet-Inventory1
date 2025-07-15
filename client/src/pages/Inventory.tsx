@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import InventoryTable from '@/components/inventory/InventoryTable';
 import AddItemForm from '@/components/inventory/AddItemForm';
+import EditItemForm from '@/components/inventory/EditItemForm';
 import ItemDetails from '@/components/inventory/ItemDetails';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -25,7 +26,9 @@ export default function Inventory() {
   // Check if we're on a sub-route
   const isAddItem = location === '/inventory/add';
   const isViewItem = location.startsWith('/inventory/view/');
+  const isEditItem = location.startsWith('/inventory/edit/');
   const itemId = isViewItem ? location.split('/inventory/view/')[1] : null;
+  const editItemId = isEditItem ? location.split('/inventory/edit/')[1] : null;
   
   // Fetch inventory items
   const { data: items, isLoading } = useQuery({
@@ -56,6 +59,10 @@ export default function Inventory() {
   
   if (isViewItem && itemId) {
     return <ItemDetails id={itemId} />;
+  }
+  
+  if (isEditItem && editItemId) {
+    return <EditItemForm id={editItemId} />;
   }
   
   return (
