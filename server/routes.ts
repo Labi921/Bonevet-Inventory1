@@ -455,10 +455,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/loan-groups", requireAuth, validateSchema(insertLoanGroupSchema), async (req, res) => {
+  app.post("/api/loan-groups", requireAuth, async (req, res) => {
     try {
+      // Convert date strings to Date objects
+      const loanGroupData = { ...req.body };
+      if (loanGroupData.loanDate) {
+        loanGroupData.loanDate = new Date(loanGroupData.loanDate);
+      }
+      if (loanGroupData.expectedReturnDate) {
+        loanGroupData.expectedReturnDate = new Date(loanGroupData.expectedReturnDate);
+      }
+      
+      // Validate the loan group data
+      const validatedData = insertLoanGroupSchema.parse(loanGroupData);
+      
       // Check if all items exist and are available
-      const itemIds = req.body.items;
+      const itemIds = validatedData.items;
       const unavailableItems = [];
       
       for (const itemId of itemIds) {
@@ -486,7 +498,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create the loan group
       const loanGroup = await storage.createLoanGroup(
-        { ...req.body, createdBy: (req.user as any).id }, 
+        { ...validatedData, createdBy: (req.user as any).id }, 
         itemIds
       );
       
@@ -502,6 +514,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(loanGroup);
     } catch (error: any) {
       console.error("Error creating loan group:", error);
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
       res.status(500).json({ message: "Failed to create loan group", error: error?.message || "Unknown error" });
     }
   });
@@ -632,10 +648,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/loans", requireAuth, validateSchema(insertLoanSchema), async (req, res) => {
+  app.post("/api/loans", requireAuth, async (req, res) => {
     try {
+      // Convert date strings to Date objects
+      const loanData = { ...req.body };
+      if (loanData.loanDate) {
+        loanData.loanDate = new Date(loanData.loanDate);
+      }
+      if (loanData.expectedReturnDate) {
+        loanData.expectedReturnDate = new Date(loanData.expectedReturnDate);
+      }
+      
+      // Validate the loan data
+      const validatedData = insertLoanSchema.parse(loanData);
+      
       // Check if item exists and is available
-      const itemId = req.body.itemId;
+      const itemId = validatedData.itemId;
       const item = await storage.getInventoryItem(itemId);
       
       if (!item) {
@@ -648,7 +676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create the loan
       const loan = await storage.createLoan({
-        ...req.body,
+        ...validatedData,
         createdBy: (req.user as any).id
       });
       
@@ -678,6 +706,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(loan);
     } catch (error) {
+      console.error('Error creating loan:', error);
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
       res.status(500).json({ message: "Failed to create loan" });
     }
   });
