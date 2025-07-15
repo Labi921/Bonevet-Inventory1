@@ -71,10 +71,11 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
           <TableHeader className="bg-gray-50">
             <TableRow>
               <TableHead className="w-[100px]">ID</TableHead>
-              <TableHead>Item</TableHead>
+              <TableHead>Name</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Location</TableHead>
+              <TableHead className="w-[80px]">Quantity</TableHead>
               <TableHead>Price</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -87,13 +88,7 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
                     <div className="w-16 h-5 bg-gray-200 animate-pulse rounded"></div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center">
-                      <div className="h-8 w-8 rounded-md bg-gray-200 animate-pulse"></div>
-                      <div className="ml-3">
-                        <div className="w-24 h-4 bg-gray-200 animate-pulse rounded mb-1"></div>
-                        <div className="w-20 h-3 bg-gray-200 animate-pulse rounded"></div>
-                      </div>
-                    </div>
+                    <div className="w-32 h-5 bg-gray-200 animate-pulse rounded"></div>
                   </TableCell>
                   <TableCell>
                     <div className="w-20 h-5 bg-gray-200 animate-pulse rounded"></div>
@@ -103,6 +98,9 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
                   </TableCell>
                   <TableCell>
                     <div className="w-24 h-5 bg-gray-200 animate-pulse rounded"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="w-12 h-5 bg-gray-200 animate-pulse rounded"></div>
                   </TableCell>
                   <TableCell>
                     <div className="w-16 h-5 bg-gray-200 animate-pulse rounded"></div>
@@ -121,16 +119,8 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.itemId}</TableCell>
                   <TableCell>
-                    <div className="flex items-center">
-                      <div className="h-8 w-8 rounded-md bg-primary-100 flex items-center justify-center text-primary-800">
-                        {/* Replace SVGs with icon identifiers */}
-                        <span>{item.category}</span>
-                      </div>
-                      <div className="ml-3">
-                        <div className="font-medium text-gray-900">{item.name}</div>
-                        <div className="text-gray-500">{item.model}</div>
-                      </div>
-                    </div>
+                    <div className="font-medium text-gray-900">{item.name}</div>
+                    {item.model && <div className="text-gray-500 text-sm">{item.model}</div>}
                   </TableCell>
                   <TableCell>{item.category}</TableCell>
                   <TableCell>
@@ -139,6 +129,7 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
                     </span>
                   </TableCell>
                   <TableCell>{item.location}</TableCell>
+                  <TableCell className="text-center font-medium">{item.quantity}</TableCell>
                   <TableCell>{item.price ? `€${item.price.toFixed(2)}` : '-'}</TableCell>
                   <TableCell className="text-right">
                     <Button 
@@ -168,7 +159,7 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={8} className="h-24 text-center">
                   {items?.length === 0 ? 'No items found. Try a different search or add a new item.' : 'Error loading inventory data.'}
                 </TableCell>
               </TableRow>
