@@ -61,6 +61,8 @@ export default function LifecycleManagement({
         description: "New lifecycle entry added successfully",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/inventory/${itemId}/lifecycle-history`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/inventory/${itemId}`] });
       // Reset form
       setSelectedStatuses([]);
       setDate(undefined);
@@ -132,8 +134,20 @@ export default function LifecycleManagement({
 
   const lifecycleOptions = assetLifecycleStatusEnum.options;
 
+  // Reset form when dialog opens
+  const handleOpenChange = (open: boolean) => {
+    setOpen(open);
+    if (open) {
+      // Clear form when opening
+      setSelectedStatuses([]);
+      setDate(undefined);
+      setReason('');
+      setQuantity(1);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="text-purple-600 hover:text-purple-700">
           <Settings className="h-4 w-4 mr-1" />
