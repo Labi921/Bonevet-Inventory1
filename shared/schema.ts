@@ -77,7 +77,7 @@ export const inventoryItems = pgTable("inventory_items", {
   notes: text("notes"),
   imagePath: text("image_path"), // Path to uploaded image
   
-  // Asset Lifecycle Tracking
+  // Asset Lifecycle Tracking (kept for backward compatibility)
   lifecycleStatuses: text("lifecycle_statuses").array(), // Array of lifecycle statuses
   lifecycleDate: date("lifecycle_date"), // Date when lifecycle actions were taken
   lifecycleReason: text("lifecycle_reason"), // Reason for lifecycle actions
@@ -85,6 +85,18 @@ export const inventoryItems = pgTable("inventory_items", {
   
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Lifecycle History Model - tracks all lifecycle changes for items
+export const lifecycleHistory = pgTable("lifecycle_history", {
+  id: serial("id").primaryKey(),
+  itemId: integer("item_id").notNull().references(() => inventoryItems.id),
+  lifecycleStatuses: text("lifecycle_statuses").array().notNull(), // Array of lifecycle statuses
+  lifecycleDate: date("lifecycle_date").notNull(), // Date when lifecycle actions were taken
+  lifecycleReason: text("lifecycle_reason").notNull(), // Reason for lifecycle actions
+  quantityLifecycled: integer("quantity_lifecycled").notNull(), // How many units went through lifecycle
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").notNull(), // User who made the lifecycle change
 });
 
 export const insertInventoryItemSchema = createInsertSchema(inventoryItems)
@@ -177,6 +189,16 @@ export const activityLogs = pgTable("activity_logs", {
 export const insertActivityLogSchema = createInsertSchema(activityLogs)
   .omit({ id: true, timestamp: true });
 
+// Lifecycle History Schema
+export const insertLifecycleHistorySchema = createInsertSchema(lifecycleHistory)
+  .omit({ id: true, createdAt: true })
+  .extend({
+    lifecycleStatuses: z.array(assetLifecycleStatusEnum).min(1, "At least one lifecycle status is required"),
+    lifecycleDate: z.string().min(1, "Lifecycle date is required"),
+    lifecycleReason: z.string().min(1, "Lifecycle reason is required"),
+    quantityLifecycled: z.number().int().positive("Quantity must be positive"),
+  });
+
 // Type definitions
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -195,3 +217,6 @@ export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
+
+export type LifecycleHistory = typeof lifecycleHistory.$inferSelect;
+export type InsertLifecycleHistory = z.infer<typeof insertLifecycleHistorySchema>;

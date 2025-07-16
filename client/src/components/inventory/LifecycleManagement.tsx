@@ -58,9 +58,14 @@ export default function LifecycleManagement({
     onSuccess: () => {
       toast({
         title: "Success",
-        description: "Item lifecycle updated successfully",
+        description: "New lifecycle entry added successfully",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
+      // Reset form
+      setSelectedStatuses([]);
+      setDate(undefined);
+      setReason('');
+      setQuantity(1);
       setOpen(false);
     },
     onError: (error: any) => {
@@ -143,7 +148,7 @@ export default function LifecycleManagement({
           <div>
             <h4 className="font-semibold text-gray-900 mb-2">Item: {itemName}</h4>
             <p className="text-sm text-gray-600">
-              Update the lifecycle status for this item. You can select multiple statuses that apply.
+              Add a new lifecycle entry for this item. Each entry is tracked separately and all history is preserved.
             </p>
             <p className="text-sm text-blue-600 mt-1">
               Available quantity: {quantityAvailable} units

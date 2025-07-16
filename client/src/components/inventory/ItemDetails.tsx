@@ -48,6 +48,12 @@ export default function ItemDetails({ id }: ItemDetailsProps) {
   const { data: item, isLoading } = useQuery<InventoryItem>({
     queryKey: [`/api/inventory/${id}`],
   });
+
+  // Fetch lifecycle history
+  const { data: lifecycleHistory, isLoading: isHistoryLoading } = useQuery<any[]>({
+    queryKey: [`/api/inventory/${id}/lifecycle-history`],
+    enabled: !!id,
+  });
   
   // Handle edit item
   const handleEditItem = () => {
@@ -305,6 +311,46 @@ export default function ItemDetails({ id }: ItemDetailsProps) {
                           </p>
                         </div>
                       </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Lifecycle History */}
+                <div>
+                  <h3 className="text-lg font-medium">Lifecycle History</h3>
+                  <Separator className="my-2" />
+                  <div className="mt-2 space-y-3">
+                    {isHistoryLoading ? (
+                      <div className="space-y-2">
+                        <div className="h-4 w-full bg-gray-200 animate-pulse rounded"></div>
+                        <div className="h-4 w-3/4 bg-gray-200 animate-pulse rounded"></div>
+                      </div>
+                    ) : lifecycleHistory && lifecycleHistory.length > 0 ? (
+                      lifecycleHistory.map((entry: any, index: number) => (
+                        <div key={index} className="flex items-start space-x-3 p-3 bg-purple-50 rounded-lg">
+                          <div className="flex-shrink-0 w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap gap-1 mb-1">
+                              {entry.lifecycleStatuses.map((status: string, statusIndex: number) => (
+                                <Badge key={statusIndex} variant="secondary" className="bg-purple-100 text-purple-800 text-xs">
+                                  {status}
+                                </Badge>
+                              ))}
+                            </div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {entry.quantityLifecycled} unit{entry.quantityLifecycled > 1 ? 's' : ''} processed
+                            </p>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {entry.lifecycleReason}
+                            </p>
+                            <p className="text-sm text-gray-500 mt-1">
+                              {format(new Date(entry.lifecycleDate), 'PPP')} • {format(new Date(entry.createdAt), 'pp')}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">No lifecycle changes recorded for this item.</p>
                     )}
                   </div>
                 </div>

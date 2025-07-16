@@ -4,7 +4,8 @@ import {
   loanGroups, LoanGroup, InsertLoanGroup,
   loans, Loan, InsertLoan,
   documents, Document, InsertDocument,
-  activityLogs, ActivityLog, InsertActivityLog
+  activityLogs, ActivityLog, InsertActivityLog,
+  lifecycleHistory, LifecycleHistory, InsertLifecycleHistory
 } from "@shared/schema";
 
 // Storage Interface
@@ -34,6 +35,11 @@ export interface IStorage {
   
   // Asset Lifecycle Management
   updateItemLifecycle(itemId: number, lifecycleStatuses: string[], lifecycleDate: string, lifecycleReason: string, quantityLifecycled: number): Promise<InventoryItem | undefined>;
+  
+  // Lifecycle History Operations
+  createLifecycleHistory(history: InsertLifecycleHistory): Promise<LifecycleHistory>;
+  getLifecycleHistoryByItemId(itemId: number): Promise<LifecycleHistory[]>;
+  listLifecycleHistory(): Promise<LifecycleHistory[]>;
 
   // Loan Group Operations
   getLoanGroup(id: number): Promise<LoanGroup & { items: (Loan & { item: InventoryItem })[] }>;
@@ -76,6 +82,7 @@ export class MemStorage implements IStorage {
   private loans: Map<number, Loan>;
   private documents: Map<number, Document>;
   private activityLogs: Map<number, ActivityLog>;
+  private lifecycleHistories: Map<number, LifecycleHistory>;
   
   private userIdCounter: number;
   private inventoryIdCounter: number;
@@ -83,6 +90,7 @@ export class MemStorage implements IStorage {
   private loanIdCounter: number;
   private documentIdCounter: number;
   private activityLogIdCounter: number;
+  private lifecycleHistoryIdCounter: number;
 
   constructor() {
     this.users = new Map();
@@ -91,6 +99,7 @@ export class MemStorage implements IStorage {
     this.loans = new Map();
     this.documents = new Map();
     this.activityLogs = new Map();
+    this.lifecycleHistories = new Map();
     
     this.userIdCounter = 1;
     this.inventoryIdCounter = 1;
@@ -98,6 +107,7 @@ export class MemStorage implements IStorage {
     this.loanIdCounter = 1;
     this.documentIdCounter = 1;
     this.activityLogIdCounter = 1;
+    this.lifecycleHistoryIdCounter = 1;
     
     // Add default admin user
     this.createUser({
@@ -632,6 +642,22 @@ export class MemStorage implements IStorage {
       throw new Error("Cannot lifecycle more items than are available");
     }
     
+    // Create lifecycle history entry
+    const historyId = this.lifecycleHistoryIdCounter++;
+    const historyEntry: LifecycleHistory = {
+      id: historyId,
+      itemId: itemId,
+      lifecycleStatuses,
+      lifecycleDate,
+      lifecycleReason,
+      quantityLifecycled,
+      createdAt: new Date(),
+      createdBy: 1 // Admin user ID - in real app, this would be the current user
+    };
+    
+    this.lifecycleHistories.set(historyId, historyEntry);
+    
+    // Update item quantities and set latest lifecycle info for backward compatibility
     const updatedItem = {
       ...item,
       lifecycleStatuses,
@@ -644,6 +670,30 @@ export class MemStorage implements IStorage {
     
     this.inventoryItems.set(itemId, updatedItem);
     return updatedItem;
+  }
+
+  // Lifecycle History Operations
+  async createLifecycleHistory(insertHistory: InsertLifecycleHistory): Promise<LifecycleHistory> {
+    const id = this.lifecycleHistoryIdCounter++;
+    const history: LifecycleHistory = {
+      id,
+      ...insertHistory,
+      createdAt: new Date()
+    };
+    
+    this.lifecycleHistories.set(id, history);
+    return history;
+  }
+
+  async getLifecycleHistoryByItemId(itemId: number): Promise<LifecycleHistory[]> {
+    return Array.from(this.lifecycleHistories.values())
+      .filter(history => history.itemId === itemId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async listLifecycleHistory(): Promise<LifecycleHistory[]> {
+    return Array.from(this.lifecycleHistories.values())
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 }
 

@@ -466,6 +466,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get lifecycle history for an item
+  app.get("/api/inventory/:id/lifecycle-history", requireAuth, async (req, res) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      const history = await storage.getLifecycleHistoryByItemId(itemId);
+      res.json(history);
+    } catch (error) {
+      console.error('Error fetching lifecycle history:', error);
+      res.status(500).json({ message: "Failed to fetch lifecycle history" });
+    }
+  });
+
   // Loan Group routes
   app.get("/api/loan-groups", requireAuth, async (req, res) => {
     try {
