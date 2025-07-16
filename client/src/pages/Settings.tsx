@@ -29,6 +29,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Monitor, Moon, Sun } from 'lucide-react';
 
 // Settings form schema
 const generalSettingsSchema = z.object({
@@ -38,6 +40,42 @@ const generalSettingsSchema = z.object({
   enableNotifications: z.boolean().default(true),
   enableAuditLogs: z.boolean().default(true)
 });
+
+function ThemeSelector() {
+  const { theme, setTheme } = useTheme();
+
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium">Theme</label>
+      <div className="grid grid-cols-3 gap-2">
+        <Button
+          variant={theme === "light" ? "default" : "outline"}
+          className="h-auto p-3 flex flex-col items-center gap-2"
+          onClick={() => setTheme("light")}
+        >
+          <Sun className="h-4 w-4" />
+          <span className="text-xs">Light</span>
+        </Button>
+        <Button
+          variant={theme === "dark" ? "default" : "outline"}
+          className="h-auto p-3 flex flex-col items-center gap-2"
+          onClick={() => setTheme("dark")}
+        >
+          <Moon className="h-4 w-4" />
+          <span className="text-xs">Dark</span>
+        </Button>
+        <Button
+          variant={theme === "system" ? "default" : "outline"}
+          className="h-auto p-3 flex flex-col items-center gap-2"
+          onClick={() => setTheme("system")}
+        >
+          <Monitor className="h-4 w-4" />
+          <span className="text-xs">System</span>
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export default function Settings() {
   const { user } = useRequireAuth('admin'); // Require admin role
@@ -186,23 +224,7 @@ export default function Settings() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Theme</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="flex items-center space-x-2">
-                      <input type="radio" id="light-theme" name="theme" className="form-radio" defaultChecked />
-                      <label htmlFor="light-theme" className="text-sm">Light</label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input type="radio" id="dark-theme" name="theme" className="form-radio" />
-                      <label htmlFor="dark-theme" className="text-sm">Dark</label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input type="radio" id="system-theme" name="theme" className="form-radio" />
-                      <label htmlFor="system-theme" className="text-sm">System</label>
-                    </div>
-                  </div>
-                </div>
+                <ThemeSelector />
                 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Primary Color</label>

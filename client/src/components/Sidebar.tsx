@@ -57,16 +57,16 @@ export default function Sidebar() {
   ];
   
   return (
-    <aside className="bg-primary-800 text-white w-full md:w-64 md:min-h-screen transition-all duration-300 ease-in-out">
-      <div className="p-4 flex justify-between items-center md:justify-center border-b border-primary-700">
+    <aside className="bg-primary text-primary-foreground w-full md:w-64 md:min-h-screen transition-all duration-300 ease-in-out">
+      <div className="p-4 flex justify-between items-center md:justify-center border-b border-primary-foreground/20">
         <div className="flex items-center space-x-2">
-          <div className="h-8 w-8 rounded-md bg-primary-600 flex items-center justify-center">
+          <div className="h-8 w-8 rounded-md bg-primary-foreground/20 flex items-center justify-center">
             <span className="font-bold">BV</span>
           </div>
           <h1 className="text-xl font-bold">BONEVET</h1>
         </div>
         <button 
-          className="md:hidden text-white"
+          className="md:hidden text-primary-foreground"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
           {isMobileMenuOpen ? (
@@ -83,7 +83,7 @@ export default function Sidebar() {
       
       <div className={`p-4 ${isMobileMenuOpen ? 'block' : 'hidden'} md:block`}>
         <div className="py-4">
-          <p className="text-white/90 text-xs uppercase font-bold">Main Menu</p>
+          <p className="text-primary-foreground/90 text-xs uppercase font-bold">Main Menu</p>
           <nav className="mt-2">
             {navItems.map((item) => (
               <Link 
@@ -93,8 +93,8 @@ export default function Sidebar() {
                 <a 
                   className={`block py-2.5 px-4 rounded transition duration-200 
                     ${isActive(item.path) 
-                      ? 'bg-primary-700 text-white' 
-                      : 'hover:bg-primary-700 text-gray-200'}`}
+                      ? 'bg-primary-foreground/20 text-primary-foreground' 
+                      : 'hover:bg-primary-foreground/10 text-primary-foreground/80'}`}
                 >
                   <div className="flex items-center">
                     {item.icon}
@@ -107,8 +107,8 @@ export default function Sidebar() {
         </div>
         
         {user?.role === 'admin' && (
-          <div className="py-4 border-t border-primary-700">
-            <p className="text-white/90 text-xs uppercase font-bold">Admin</p>
+          <div className="py-4 border-t border-primary-foreground/20">
+            <p className="text-primary-foreground/90 text-xs uppercase font-bold">Admin</p>
             <nav className="mt-2">
               {adminItems.map((item) => (
                 <Link 
@@ -118,8 +118,8 @@ export default function Sidebar() {
                   <a 
                     className={`block py-2.5 px-4 rounded transition duration-200 
                       ${isActive(item.path) 
-                        ? 'bg-primary-700 text-white' 
-                        : 'hover:bg-primary-700 text-gray-200'}`}
+                        ? 'bg-primary-foreground/20 text-primary-foreground' 
+                        : 'hover:bg-primary-foreground/10 text-primary-foreground/80'}`}
                   >
                     <div className="flex items-center">
                       {item.icon}
@@ -133,19 +133,19 @@ export default function Sidebar() {
         )}
       </div>
       
-      <div className={`mt-auto p-4 border-t border-primary-700 ${isMobileMenuOpen ? 'block' : 'hidden'} md:block`}>
+      <div className={`mt-auto p-4 border-t border-primary-foreground/20 ${isMobileMenuOpen ? 'block' : 'hidden'} md:block`}>
         <div className="flex items-center">
-          <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center">
-            <span className="text-sm font-bold">{user?.name.charAt(0) || 'U'}</span>
+          <div className="h-8 w-8 rounded-full bg-primary-foreground/20 flex items-center justify-center">
+            <span className="text-sm font-bold text-primary-foreground">{user?.name.charAt(0) || 'U'}</span>
           </div>
           <div className="ml-3">
-            <p className="text-sm font-medium text-white">{user?.name || 'User'}</p>
-            <p className="text-xs text-gray-300">{user?.role === 'admin' ? 'Administrator' : 'User'}</p>
+            <p className="text-sm font-medium text-primary-foreground">{user?.name || 'User'}</p>
+            <p className="text-xs text-primary-foreground/70">{user?.role === 'admin' ? 'Administrator' : 'User'}</p>
           </div>
         </div>
         <Button 
           variant="secondary" 
-          className="mt-4 w-full bg-primary-700 text-white hover:bg-primary-600"
+          className="mt-4 w-full bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20"
           onClick={() => logout()}
         >
           <LogOut className="h-4 w-4 mr-2" /> Log Out
