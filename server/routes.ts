@@ -577,37 +577,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate the loan group data
       const validatedData = insertLoanGroupSchema.parse(loanGroupData);
       
-      // Check if all items exist and are available
-      const itemIds = validatedData.items;
+      // Check if all items exist and are available with sufficient quantities
+      const itemsData = validatedData.items;
       const unavailableItems = [];
       
-      for (const itemId of itemIds) {
-        const item = await storage.getInventoryItem(itemId);
+      for (const itemData of itemsData) {
+        const item = await storage.getInventoryItem(itemData.id);
         if (!item) {
-          return res.status(404).json({ message: `Item with ID ${itemId} not found` });
+          return res.status(404).json({ message: `Item with ID ${itemData.id} not found` });
         }
         
-        if (item.status !== "Available") {
+        if (item.quantityAvailable < itemData.quantity) {
           unavailableItems.push({
             id: item.id,
             name: item.name,
             itemId: item.itemId,
-            status: item.status
+            requested: itemData.quantity,
+            available: item.quantityAvailable
           });
         }
       }
       
       if (unavailableItems.length > 0) {
         return res.status(400).json({ 
-          message: "Some items are not available for loan",
+          message: "Some items don't have sufficient quantity available for loan",
           unavailableItems
         });
       }
       
-      // Create the loan group
+      // Create the loan group with quantities
       const loanGroup = await storage.createLoanGroup(
         { ...validatedData, createdBy: (req.user as any).id }, 
-        itemIds
+        itemsData
       );
       
       // Log the activity
@@ -616,7 +617,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: "Create",
         entityType: "LoanGroup",
         entityId: loanGroup.id.toString(),
-        details: `Created loan group with ${itemIds.length} items for ${loanGroup.borrowerName}`
+        details: `Created loan group with ${itemsData.length} items for ${loanGroup.borrowerName}`
       });
       
       res.status(201).json(loanGroup);

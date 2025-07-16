@@ -44,7 +44,7 @@ export interface IStorage {
   // Loan Group Operations
   getLoanGroup(id: number): Promise<LoanGroup & { items: (Loan & { item: InventoryItem })[] }>;
   getLoanGroupByLoanGroupId(loanGroupId: string): Promise<LoanGroup & { items: (Loan & { item: InventoryItem })[] } | undefined>;
-  createLoanGroup(loanGroup: InsertLoanGroup, itemIds: number[]): Promise<LoanGroup & { items: Loan[] }>;
+  createLoanGroup(loanGroup: InsertLoanGroup, itemsData: Array<{ id: number; quantity: number }>): Promise<LoanGroup & { items: Loan[] }>;
   listLoanGroups(): Promise<LoanGroup[]>;
   updateLoanGroup(id: number, loanGroupData: Partial<Omit<InsertLoanGroup, 'items'>>): Promise<LoanGroup | undefined>;
   markLoanGroupReturned(id: number, actualReturnDate: Date): Promise<LoanGroup | undefined>;
@@ -281,7 +281,7 @@ export class MemStorage implements IStorage {
     return { ...loanGroup, items: loans };
   }
   
-  async createLoanGroup(loanGroupData: InsertLoanGroup, itemIds: number[]): Promise<LoanGroup & { items: Loan[] }> {
+  async createLoanGroup(loanGroupData: InsertLoanGroup, itemsData: Array<{ id: number; quantity: number }>): Promise<LoanGroup & { items: Loan[] }> {
     // Create the loan group
     const id = this.loanGroupIdCounter++;
     const now = new Date();
@@ -300,13 +300,14 @@ export class MemStorage implements IStorage {
     
     this.loanGroups.set(id, loanGroup);
     
-    // Create individual loan entries for each item
+    // Create individual loan entries for each item with quantities
     const loanItems: Loan[] = [];
     
-    for (const itemId of itemIds) {
+    for (const itemData of itemsData) {
       const loan = await this.createLoan({ 
         loanGroupId: id, 
-        itemId, 
+        itemId: itemData.id, 
+        quantityLoaned: itemData.quantity,
         notes: loanGroupData.notes || null 
       });
       

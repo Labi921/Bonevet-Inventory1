@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
-import { Save, ArrowLeft, CalendarIcon, Trash, Package } from 'lucide-react';
+import { Save, ArrowLeft, CalendarIcon, Trash, Package, Search, Plus, Minus } from 'lucide-react';
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,14 +51,26 @@ interface MultiItemLoanFormProps {
   preselectedItemId?: number;
 }
 
+interface SelectedItem {
+  id: number;
+  quantity: number;
+  maxQuantity: number;
+  name: string;
+  itemId: string;
+}
+
 export default function MultiItemLoanForm({ preselectedItemId }: MultiItemLoanFormProps) {
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const [selectedItems, setSelectedItems] = useState<number[]>([]);
+  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Form schema
   const loanGroupSchema = z.object({
-    items: z.array(z.number()).min(1, {
+    items: z.array(z.object({
+      id: z.number(),
+      quantity: z.number().min(1, "Quantity must be at least 1")
+    })).min(1, {
       message: "Please select at least one item",
     }),
     borrowerName: z.string().min(2, {
@@ -86,9 +98,17 @@ export default function MultiItemLoanForm({ preselectedItemId }: MultiItemLoanFo
     retry: false,
   });
 
-  // Filter for available items only
+  // Filter for available items only and include search functionality
   const availableItems = Array.isArray(inventoryItems) 
-    ? inventoryItems.filter((item: any) => item.status === "Available")
+    ? inventoryItems.filter((item: any) => {
+        const hasAvailableQuantity = item.quantityAvailable > 0;
+        const matchesSearch = searchTerm === '' || 
+          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.itemId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.model && item.model.toLowerCase().includes(searchTerm.toLowerCase()));
+        return hasAvailableQuantity && matchesSearch;
+      })
     : [];
 
   // Form setup
@@ -103,12 +123,21 @@ export default function MultiItemLoanForm({ preselectedItemId }: MultiItemLoanFo
 
   // Set preselected item if available
   useEffect(() => {
-    if (preselectedItemId) {
-      const updatedItems = [...selectedItems, preselectedItemId];
-      setSelectedItems(updatedItems);
-      form.setValue('items', updatedItems);
+    if (preselectedItemId && inventoryItems) {
+      const preselectedItem = inventoryItems.find((item: any) => item.id === preselectedItemId);
+      if (preselectedItem && preselectedItem.quantityAvailable > 0) {
+        const selectedItem: SelectedItem = {
+          id: preselectedItem.id,
+          quantity: 1,
+          maxQuantity: preselectedItem.quantityAvailable,
+          name: preselectedItem.name,
+          itemId: preselectedItem.itemId
+        };
+        setSelectedItems([selectedItem]);
+        form.setValue('items', [{ id: preselectedItem.id, quantity: 1 }]);
+      }
     }
-  }, [preselectedItemId, form]);
+  }, [preselectedItemId, inventoryItems, form]);
   
   // Create loan group mutation
   const createLoanGroup = useMutation({
@@ -149,23 +178,48 @@ export default function MultiItemLoanForm({ preselectedItemId }: MultiItemLoanFo
   });
 
   const onSubmit = (values: z.infer<typeof loanGroupSchema>) => {
-    // Make sure the items array contains the selected items
-    values.items = selectedItems;
+    // Transform selectedItems to the expected format
+    const itemsForSubmission = selectedItems.map(item => ({
+      id: item.id,
+      quantity: item.quantity
+    }));
+    values.items = itemsForSubmission;
     createLoanGroup.mutate(values);
   };
 
-  const toggleItemSelection = (itemId: number) => {
-    if (selectedItems.includes(itemId)) {
+  const toggleItemSelection = (item: any) => {
+    const existingIndex = selectedItems.findIndex(selected => selected.id === item.id);
+    
+    if (existingIndex >= 0) {
       // Remove the item if already selected
-      const updatedItems = selectedItems.filter(id => id !== itemId);
+      const updatedItems = selectedItems.filter(selected => selected.id !== item.id);
       setSelectedItems(updatedItems);
-      form.setValue('items', updatedItems);
+      form.setValue('items', updatedItems.map(selected => ({ id: selected.id, quantity: selected.quantity })));
     } else {
       // Add the item if not selected
-      const updatedItems = [...selectedItems, itemId];
+      const selectedItem: SelectedItem = {
+        id: item.id,
+        quantity: 1,
+        maxQuantity: item.quantityAvailable,
+        name: item.name,
+        itemId: item.itemId
+      };
+      const updatedItems = [...selectedItems, selectedItem];
       setSelectedItems(updatedItems);
-      form.setValue('items', updatedItems);
+      form.setValue('items', updatedItems.map(selected => ({ id: selected.id, quantity: selected.quantity })));
     }
+  };
+
+  const updateItemQuantity = (itemId: number, newQuantity: number) => {
+    const updatedItems = selectedItems.map(item => 
+      item.id === itemId ? { ...item, quantity: Math.max(1, Math.min(newQuantity, item.maxQuantity)) } : item
+    );
+    setSelectedItems(updatedItems);
+    form.setValue('items', updatedItems.map(item => ({ id: item.id, quantity: item.quantity })));
+  };
+
+  const isItemSelected = (itemId: number) => {
+    return selectedItems.some(item => item.id === itemId);
   };
 
   return (
@@ -197,7 +251,18 @@ export default function MultiItemLoanForm({ preselectedItemId }: MultiItemLoanFo
                   <FormControl>
                     <Card className="border border-slate-200">
                       <CardContent className="p-4">
-                        <div className="rounded-md border max-h-[300px] overflow-y-auto">
+                        {/* Search Bar */}
+                        <div className="relative mb-4">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                          <Input
+                            placeholder="Search items by name, ID, category, or model..."
+                            className="pl-10"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                          />
+                        </div>
+                        
+                        <div className="rounded-md border max-h-[400px] overflow-y-auto">
                           <Table>
                             <TableHeader>
                               <TableRow>
@@ -205,50 +270,97 @@ export default function MultiItemLoanForm({ preselectedItemId }: MultiItemLoanFo
                                 <TableHead>ID</TableHead>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Category</TableHead>
+                                <TableHead>Available</TableHead>
                                 <TableHead>Location</TableHead>
+                                <TableHead className="text-center">Quantity</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               {availableItems.length === 0 ? (
                                 <TableRow>
-                                  <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
-                                    No available items found
+                                  <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
+                                    {searchTerm ? "No items found matching your search" : "No available items found"}
                                   </TableCell>
                                 </TableRow>
                               ) : (
-                                availableItems.map((item: any) => (
-                                  <TableRow 
-                                    key={item.id}
-                                    className={selectedItems.includes(item.id) ? "bg-blue-50" : "cursor-pointer hover:bg-slate-50"}
-                                    onClick={() => toggleItemSelection(item.id)}
-                                  >
-                                    <TableCell onClick={(e) => e.stopPropagation()}>
-                                      <Checkbox
-                                        checked={selectedItems.includes(item.id)}
-                                        onCheckedChange={() => toggleItemSelection(item.id)}
-                                      />
-                                    </TableCell>
-                                    <TableCell className="font-mono">{item.itemId}</TableCell>
-                                    <TableCell>
-                                      <div className="font-medium">{item.name}</div>
-                                      {item.model && <div className="text-sm text-muted-foreground">{item.model}</div>}
-                                    </TableCell>
-                                    <TableCell>
-                                      <Badge variant="outline">{item.category}</Badge>
-                                    </TableCell>
-                                    <TableCell>{item.location || "—"}</TableCell>
-                                  </TableRow>
-                                ))
+                                availableItems.map((item: any) => {
+                                  const isSelected = isItemSelected(item.id);
+                                  const selectedItem = selectedItems.find(s => s.id === item.id);
+                                  return (
+                                    <TableRow 
+                                      key={item.id}
+                                      className={isSelected ? "bg-blue-50" : "cursor-pointer hover:bg-slate-50"}
+                                      onClick={() => toggleItemSelection(item)}
+                                    >
+                                      <TableCell onClick={(e) => e.stopPropagation()}>
+                                        <Checkbox
+                                          checked={isSelected}
+                                          onCheckedChange={() => toggleItemSelection(item)}
+                                        />
+                                      </TableCell>
+                                      <TableCell className="font-mono">{item.itemId}</TableCell>
+                                      <TableCell>
+                                        <div className="font-medium">{item.name}</div>
+                                        {item.model && <div className="text-sm text-muted-foreground">{item.model}</div>}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge variant="outline">{item.category}</Badge>
+                                      </TableCell>
+                                      <TableCell>
+                                        <span className="text-sm font-medium text-green-600">
+                                          {item.quantityAvailable} available
+                                        </span>
+                                      </TableCell>
+                                      <TableCell>{item.location || "—"}</TableCell>
+                                      <TableCell onClick={(e) => e.stopPropagation()}>
+                                        {isSelected ? (
+                                          <div className="flex items-center justify-center space-x-2">
+                                            <Button
+                                              type="button"
+                                              variant="outline"
+                                              size="sm"
+                                              className="h-8 w-8 p-0"
+                                              onClick={() => updateItemQuantity(item.id, selectedItem!.quantity - 1)}
+                                              disabled={selectedItem!.quantity <= 1}
+                                            >
+                                              <Minus className="h-4 w-4" />
+                                            </Button>
+                                            <span className="w-8 text-center font-medium">
+                                              {selectedItem?.quantity || 1}
+                                            </span>
+                                            <Button
+                                              type="button"
+                                              variant="outline"
+                                              size="sm"
+                                              className="h-8 w-8 p-0"
+                                              onClick={() => updateItemQuantity(item.id, selectedItem!.quantity + 1)}
+                                              disabled={selectedItem!.quantity >= item.quantityAvailable}
+                                            >
+                                              <Plus className="h-4 w-4" />
+                                            </Button>
+                                          </div>
+                                        ) : (
+                                          <div className="text-center text-muted-foreground">—</div>
+                                        )}
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })
                               )}
                             </TableBody>
                           </Table>
                         </div>
                         
-                        <div className="mt-2 p-3 bg-blue-50 rounded-md">
-                          <div className="flex items-center justify-between">
+                        <div className="mt-4 p-4 bg-blue-50 rounded-md">
+                          <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center">
                               <Package className="h-5 w-5 mr-2 text-blue-500" />
                               <span className="font-medium">Selected Items: {selectedItems.length}</span>
+                              {selectedItems.length > 0 && (
+                                <span className="ml-2 text-sm text-gray-600">
+                                  (Total: {selectedItems.reduce((sum, item) => sum + item.quantity, 0)} units)
+                                </span>
+                              )}
                             </div>
                             {selectedItems.length > 0 && (
                               <Button 
@@ -266,6 +378,36 @@ export default function MultiItemLoanForm({ preselectedItemId }: MultiItemLoanFo
                               </Button>
                             )}
                           </div>
+                          
+                          {selectedItems.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="text-sm font-medium text-gray-700">Selected Items:</div>
+                              <div className="space-y-1">
+                                {selectedItems.map((item) => (
+                                  <div key={item.id} className="flex items-center justify-between bg-white p-2 rounded border">
+                                    <div className="flex items-center">
+                                      <span className="font-mono text-xs text-gray-500 mr-2">{item.itemId}</span>
+                                      <span className="font-medium">{item.name}</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      <span className="text-sm text-gray-600">
+                                        {item.quantity} / {item.maxQuantity}
+                                      </span>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                        onClick={() => toggleItemSelection({ id: item.id })}
+                                      >
+                                        <Trash className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>

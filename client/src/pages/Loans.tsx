@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Download, Search, Package, Users, Eye } from 'lucide-react';
+import { PlusCircle, Download, Search, Package, Users, Eye, FileText } from 'lucide-react';
 import { format, isAfter, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -149,6 +149,7 @@ export default function Loans() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
                 <a href="/loans/new" className="flex items-center cursor-pointer">
+                  <FileText className="h-4 w-4 mr-2" />
                   Single Item Loan
                 </a>
               </DropdownMenuItem>
