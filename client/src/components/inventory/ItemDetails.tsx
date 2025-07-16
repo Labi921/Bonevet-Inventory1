@@ -1,5 +1,7 @@
 import { useLocation } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { 
   ArrowLeft, 
@@ -23,6 +25,7 @@ interface ItemDetailsProps {
 
 export default function ItemDetails({ id }: ItemDetailsProps) {
   const [, navigate] = useLocation();
+  const { toast } = useToast();
   
   // Define interface for item type
   interface InventoryItem {
@@ -54,6 +57,28 @@ export default function ItemDetails({ id }: ItemDetailsProps) {
     queryKey: [`/api/inventory/${id}/lifecycle-history`],
     enabled: !!id,
   });
+
+  // Delete item mutation
+  const deleteItemMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('DELETE', `/api/inventory/${id}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Item deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
+      navigate('/inventory');
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete item",
+        variant: "destructive",
+      });
+    },
+  });
   
   // Handle edit item
   const handleEditItem = () => {
@@ -67,7 +92,9 @@ export default function ItemDetails({ id }: ItemDetailsProps) {
   
   // Handle delete item
   const handleDeleteItem = () => {
-    // Implement delete functionality
+    if (confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
+      deleteItemMutation.mutate();
+    }
   };
   
   // Get status badge class
@@ -252,8 +279,26 @@ export default function ItemDetails({ id }: ItemDetailsProps) {
                     </div>
                     
                     <div>
-                      <p className="text-sm font-medium text-gray-500">Quantity</p>
+                      <p className="text-sm font-medium text-gray-500">Total Quantity</p>
                       <p className="mt-1">{item.quantity || 1}</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Available</p>
+                      <p className="mt-1">
+                        {item.quantityAvailable > 0 ? item.quantityAvailable : 
+                         <span className="text-red-600 font-medium">Not Available</span>}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Loaned</p>
+                      <p className="mt-1">{item.quantityLoaned || 0}</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Damaged</p>
+                      <p className="mt-1">{item.quantityDamaged || 0}</p>
                     </div>
                     
                     <div>

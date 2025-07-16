@@ -138,14 +138,15 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
                   <TableCell>{item.location}</TableCell>
                   <TableCell className="text-center">
                     <div className="text-sm">
-                      <div className="font-medium">{item.quantityAvailable || item.quantity}</div>
-                      {(item.quantityLoaned > 0 || item.quantityDamaged > 0) && (
-                        <div className="text-xs text-gray-500">
-                          {item.quantityLoaned > 0 && <span>Loaned: {item.quantityLoaned}</span>}
-                          {item.quantityLoaned > 0 && item.quantityDamaged > 0 && <span> • </span>}
-                          {item.quantityDamaged > 0 && <span>Damaged: {item.quantityDamaged}</span>}
-                        </div>
-                      )}
+                      <div className="font-medium">
+                        {item.quantityAvailable > 0 ? item.quantityAvailable : 
+                         <span className="text-red-600">Not Available</span>}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Total: {item.quantity || 1}
+                        {item.quantityLoaned > 0 && <span> • Loaned: {item.quantityLoaned}</span>}
+                        {item.quantityDamaged > 0 && <span> • Damaged: {item.quantityDamaged}</span>}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>{item.price ? `€${item.price.toFixed(2)}` : '-'}</TableCell>

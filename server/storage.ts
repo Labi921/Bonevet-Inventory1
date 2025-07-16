@@ -210,6 +210,22 @@ export class MemStorage implements IStorage {
       ...itemData,
       updatedAt: new Date()
     };
+    
+    // If quantity is being updated, recalculate quantityAvailable
+    if (itemData.quantity !== undefined) {
+      const newQuantity = itemData.quantity;
+      const quantityLoaned = item.quantityLoaned || 0;
+      const quantityDamaged = item.quantityDamaged || 0;
+      
+      // Calculate lifecycle quantities from history
+      const lifecycleHistories = Array.from(this.lifecycleHistories.values())
+        .filter(h => h.itemId === id);
+      const quantityLifecycled = lifecycleHistories.reduce((sum, h) => sum + h.quantityLifecycled, 0);
+      
+      // Available = Total - Loaned - Damaged - Lifecycled
+      updatedItem.quantityAvailable = Math.max(0, newQuantity - quantityLoaned - quantityDamaged - quantityLifecycled);
+    }
+    
     this.inventoryItems.set(id, updatedItem);
     return updatedItem;
   }
