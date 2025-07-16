@@ -362,11 +362,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Partial delete inventory item
+  app.post("/api/inventory/:id/partial-delete", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { quantityToDelete } = req.body;
+      
+      if (!quantityToDelete || quantityToDelete <= 0) {
+        return res.status(400).json({ message: "Quantity to delete must be a positive number" });
+      }
+      
+      const existingItem = await storage.getInventoryItem(id);
+      if (!existingItem) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+      
+      if (quantityToDelete > existingItem.quantity) {
+        return res.status(400).json({ message: "Cannot delete more items than available" });
+      }
+      
+      const newQuantity = existingItem.quantity - quantityToDelete;
+      
+      if (newQuantity === 0) {
+        // Delete the entire item if quantity becomes 0
+        await storage.deleteInventoryItem(id);
+        
+        // Log the activity
+        await storage.createActivityLog({
+          userId: (req.user as any).id,
+          action: "Delete",
+          entityType: "InventoryItem",
+          entityId: id.toString(),
+          details: `Deleted all remaining ${quantityToDelete} unit(s) of ${existingItem.name} (${existingItem.itemId})`
+        });
+        
+        res.json({ message: "Item deleted successfully" });
+      } else {
+        // Update the quantity
+        const updatedItem = await storage.updateInventoryItem(id, { quantity: newQuantity });
+        
+        // Log the activity
+        await storage.createActivityLog({
+          userId: (req.user as any).id,
+          action: "Update",
+          entityType: "InventoryItem",
+          entityId: id.toString(),
+          details: `Deleted ${quantityToDelete} unit(s) of ${existingItem.name} (${existingItem.itemId}), ${newQuantity} remaining`
+        });
+        
+        res.json(updatedItem);
+      }
+    } catch (error) {
+      console.error('Error partially deleting inventory item:', error);
+      res.status(500).json({ message: "Failed to delete inventory item" });
+    }
+  });
+
   // Mark item as damaged
   app.post("/api/inventory/:id/damage", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const { quantity } = req.body;
+      const { quantity, reason } = req.body;
       
       if (!quantity || quantity <= 0) {
         return res.status(400).json({ message: "Quantity must be a positive number" });
@@ -384,7 +440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: "Damage",
         entityType: "InventoryItem",
         entityId: id.toString(),
-        details: `Marked ${quantity} unit(s) of ${updatedItem.name} as damaged`
+        details: `Marked ${quantity} unit(s) of ${updatedItem.name} as damaged${reason ? `: ${reason}` : ''}`
       });
       
       res.json(updatedItem);
@@ -398,7 +454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/inventory/:id/repair", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const { quantity } = req.body;
+      const { quantity, reason } = req.body;
       
       if (!quantity || quantity <= 0) {
         return res.status(400).json({ message: "Quantity must be a positive number" });
@@ -416,7 +472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: "Repair",
         entityType: "InventoryItem",
         entityId: id.toString(),
-        details: `Repaired ${quantity} unit(s) of ${updatedItem.name}`
+        details: `Returned ${quantity} unit(s) of ${updatedItem.name} to available stock${reason ? `: ${reason}` : ''}`
       });
       
       res.json(updatedItem);

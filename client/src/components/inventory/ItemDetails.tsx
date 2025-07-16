@@ -18,6 +18,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import PartialDeleteDialog from './PartialDeleteDialog';
+import DamagedItemManagement from './DamagedItemManagement';
 
 interface ItemDetailsProps {
   id: string;
@@ -58,28 +60,6 @@ export default function ItemDetails({ id }: ItemDetailsProps) {
     enabled: !!id,
   });
 
-  // Delete item mutation
-  const deleteItemMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest('DELETE', `/api/inventory/${id}`);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Item deleted successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
-      navigate('/inventory');
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete item",
-        variant: "destructive",
-      });
-    },
-  });
-  
   // Handle edit item
   const handleEditItem = () => {
     navigate(`/inventory/edit/${id}`);
@@ -88,13 +68,6 @@ export default function ItemDetails({ id }: ItemDetailsProps) {
   // Handle loan item
   const handleLoanItem = () => {
     navigate(`/loans/new?itemId=${id}`);
-  };
-  
-  // Handle delete item
-  const handleDeleteItem = () => {
-    if (confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
-      deleteItemMutation.mutate();
-    }
   };
   
   // Get status badge class
@@ -234,14 +207,19 @@ export default function ItemDetails({ id }: ItemDetailsProps) {
                       Process Loan
                     </Button>
                     
-                    <Button 
-                      variant="outline" 
-                      className="justify-start text-red-600 hover:text-red-700" 
-                      onClick={handleDeleteItem}
-                    >
-                      <Trash className="h-4 w-4 mr-2" />
-                      Delete Item
-                    </Button>
+                    <DamagedItemManagement
+                      itemId={item.id}
+                      itemName={item.name}
+                      quantityAvailable={item.quantityAvailable}
+                      quantityDamaged={item.quantityDamaged}
+                    />
+                    
+                    <PartialDeleteDialog
+                      itemId={item.id}
+                      itemName={item.name}
+                      totalQuantity={item.quantity}
+                      onComplete={() => navigate('/inventory')}
+                    />
                     
                     <Button 
                       variant="outline" 
