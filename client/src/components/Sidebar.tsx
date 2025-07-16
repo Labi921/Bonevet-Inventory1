@@ -83,7 +83,7 @@ export default function Sidebar() {
       
       <div className={`p-4 ${isMobileMenuOpen ? 'block' : 'hidden'} md:block`}>
         <div className="py-4">
-          <p className="text-gray-400 text-xs uppercase font-bold">Main Menu</p>
+          <p className="text-white/90 text-xs uppercase font-bold">Main Menu</p>
           <nav className="mt-2">
             {navItems.map((item) => (
               <Link 
@@ -108,7 +108,7 @@ export default function Sidebar() {
         
         {user?.role === 'admin' && (
           <div className="py-4 border-t border-primary-700">
-            <p className="text-gray-400 text-xs uppercase font-bold">Admin</p>
+            <p className="text-white/90 text-xs uppercase font-bold">Admin</p>
             <nav className="mt-2">
               {adminItems.map((item) => (
                 <Link 
