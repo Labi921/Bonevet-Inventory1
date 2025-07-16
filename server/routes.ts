@@ -565,17 +565,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/loan-groups", requireAuth, async (req, res) => {
     try {
-      // Convert date strings to Date objects
-      const loanGroupData = { ...req.body };
-      if (loanGroupData.loanDate) {
-        loanGroupData.loanDate = new Date(loanGroupData.loanDate);
-      }
-      if (loanGroupData.expectedReturnDate) {
-        loanGroupData.expectedReturnDate = new Date(loanGroupData.expectedReturnDate);
-      }
+      // Validate the loan group data (schema handles date transformation)
+      const validatedData = insertLoanGroupSchema.parse(req.body);
       
-      // Validate the loan group data
-      const validatedData = insertLoanGroupSchema.parse(loanGroupData);
+      // Convert date strings to Date objects for storage
+      const loanGroupData = {
+        ...validatedData,
+        loanDate: new Date(validatedData.loanDate),
+        expectedReturnDate: new Date(validatedData.expectedReturnDate)
+      };
       
       // Check if all items exist and are available with sufficient quantities
       const itemsData = validatedData.items;
@@ -607,7 +605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create the loan group with quantities
       const loanGroup = await storage.createLoanGroup(
-        { ...validatedData, createdBy: (req.user as any).id }, 
+        { ...loanGroupData, createdBy: (req.user as any).id }, 
         itemsData
       );
       

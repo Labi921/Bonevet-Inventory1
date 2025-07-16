@@ -145,15 +145,19 @@ export const loans = pgTable("loans", {
 });
 
 // Schema for creating a loan group with items
-export const insertLoanGroupSchema = createInsertSchema(loanGroups)
-  .omit({ id: true, loanGroupId: true, createdAt: true, status: true })
-  .extend({
-    createdBy: z.number().optional(), // Added by server
-    items: z.array(z.object({
-      id: z.number(),
-      quantity: z.number().min(1, "Quantity must be at least 1")
-    })).min(1, "At least one item must be selected"), // Array of item objects with quantities
-  });
+export const insertLoanGroupSchema = z.object({
+  borrowerName: z.string().min(1, "Borrower name is required"),
+  borrowerType: z.string().min(1, "Borrower type is required"),
+  borrowerContact: z.string().optional(),
+  loanDate: z.string().min(1, "Loan date is required"),
+  expectedReturnDate: z.string().min(1, "Expected return date is required"),
+  notes: z.string().optional(),
+  createdBy: z.number().optional(), // Added by server
+  items: z.array(z.object({
+    id: z.number(),
+    quantity: z.number().min(1, "Quantity must be at least 1")
+  })).min(1, "At least one item must be selected"), // Array of item objects with quantities
+});
 
 // Schema for individual loan items (used internally)
 export const insertLoanSchema = createInsertSchema(loans)
