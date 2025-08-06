@@ -79,7 +79,7 @@ export default function DocumentForm() {
     
     // Set template content based on type
     const selectedItemId = form.getValues('relatedItemId');
-    const selectedItem = selectedItemId 
+    const selectedItem = selectedItemId && selectedItemId !== 'none'
       ? items?.find((item: any) => item.id.toString() === selectedItemId)
       : null;
     
@@ -131,7 +131,7 @@ export default function DocumentForm() {
   // Update content when related item changes
   const watchRelatedItem = form.watch('relatedItemId');
   useEffect(() => {
-    if (watchRelatedItem) {
+    if (watchRelatedItem && watchRelatedItem !== 'none') {
       const selectedItem = items?.find((item: any) => item.id.toString() === watchRelatedItem);
       if (selectedItem) {
         try {
@@ -203,7 +203,12 @@ export default function DocumentForm() {
   });
   
   const onSubmit = (values: z.infer<typeof documentSchema>) => {
-    createDocument.mutate(values);
+    // Convert "none" back to undefined for the API
+    const submitData = {
+      ...values,
+      relatedItemId: values.relatedItemId === 'none' ? undefined : values.relatedItemId
+    };
+    createDocument.mutate(submitData);
   };
   
   return (
@@ -289,7 +294,7 @@ export default function DocumentForm() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {items?.map((item: any) => (
                         <SelectItem key={item.id} value={item.id.toString()}>
                           {item.itemId} - {item.name}
