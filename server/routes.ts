@@ -221,6 +221,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Export route - must come before the :id route to avoid conflicts
+  app.get("/api/inventory/export", requireAuth, async (req, res) => {
+    try {
+      const items = await storage.listInventoryItems();
+      
+      // Generate CSV content
+      const headers = [
+        'Item ID',
+        'Name', 
+        'Category',
+        'Status',
+        'Quantity Total',
+        'Quantity Available',
+        'Quantity Loaned',
+        'Quantity Damaged',
+        'Price',
+        'Usage',
+        'Location',
+        'Notes',
+        'Created Date'
+      ];
+      
+      const csvRows = [
+        headers.join(','),
+        ...items.map(item => [
+          item.itemId || '',
+          `"${(item.name || '').replace(/"/g, '""')}"`,
+          item.category || '',
+          item.status || '',
+          item.quantity || 0,
+          item.quantityAvailable || 0,
+          item.quantityLoaned || 0,
+          item.quantityDamaged || 0,
+          item.price ? `$${item.price.toFixed(2)}` : '',
+          item.usage || '',
+          `"${(item.location || '').replace(/"/g, '""')}"`,
+          `"${(item.notes || '').replace(/"/g, '""')}"`,
+          item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''
+        ].join(','))
+      ];
+      
+      const csvContent = csvRows.join('\n');
+      const filename = `inventory-export-${new Date().toISOString().split('T')[0]}.csv`;
+      
+      // Set headers for file download
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', Buffer.byteLength(csvContent));
+      
+      // Log the activity
+      await storage.createActivityLog({
+        userId: (req.user as any).id,
+        action: "Export",
+        entityType: "InventoryItem",
+        entityId: "bulk",
+        details: `Exported ${items.length} inventory items to CSV`
+      });
+      
+      res.send(csvContent);
+    } catch (error) {
+      console.error('Error exporting inventory:', error);
+      res.status(500).json({ message: "Failed to export inventory" });
+    }
+  });
+
   app.get("/api/inventory/:id", requireAuth, async (req, res) => {
     try {
       const item = await storage.getInventoryItem(parseInt(req.params.id));
@@ -962,70 +1027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Export routes
-  app.get("/api/inventory/export", requireAuth, async (req, res) => {
-    try {
-      const items = await storage.listInventoryItems();
-      
-      // Generate CSV content
-      const headers = [
-        'Item ID',
-        'Name', 
-        'Category',
-        'Status',
-        'Quantity Total',
-        'Quantity Available',
-        'Quantity Loaned',
-        'Quantity Damaged',
-        'Price',
-        'Usage',
-        'Location',
-        'Notes',
-        'Created Date'
-      ];
-      
-      const csvRows = [
-        headers.join(','),
-        ...items.map(item => [
-          item.itemId || '',
-          `"${(item.name || '').replace(/"/g, '""')}"`,
-          item.category || '',
-          item.status || '',
-          item.quantity || 0,
-          item.quantityAvailable || 0,
-          item.quantityLoaned || 0,
-          item.quantityDamaged || 0,
-          item.price ? `$${item.price.toFixed(2)}` : '',
-          item.usage || '',
-          `"${(item.location || '').replace(/"/g, '""')}"`,
-          `"${(item.notes || '').replace(/"/g, '""')}"`,
-          item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''
-        ].join(','))
-      ];
-      
-      const csvContent = csvRows.join('\n');
-      const filename = `inventory-export-${new Date().toISOString().split('T')[0]}.csv`;
-      
-      // Set headers for file download
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.setHeader('Content-Length', Buffer.byteLength(csvContent));
-      
-      // Log the activity
-      await storage.createActivityLog({
-        userId: (req.user as any).id,
-        action: "Export",
-        entityType: "InventoryItem",
-        entityId: "bulk",
-        details: `Exported ${items.length} inventory items to CSV`
-      });
-      
-      res.send(csvContent);
-    } catch (error) {
-      console.error('Error exporting inventory:', error);
-      res.status(500).json({ message: "Failed to export inventory" });
-    }
-  });
+
 
   // Activity logs
   app.get("/api/activity", requireAuth, async (req, res) => {
