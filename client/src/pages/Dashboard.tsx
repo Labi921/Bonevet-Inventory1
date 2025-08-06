@@ -34,11 +34,51 @@ export default function Dashboard() {
   const handleAddItem = () => navigate('/inventory/add');
   const handleGenerateDocument = () => navigate('/documents/new');
   const handleProcessLoan = () => navigate('/loans/new');
-  const handleExportReport = () => {
-    toast({
-      title: 'Export Started',
-      description: 'Your inventory report is being generated.',
-    });
+  const handleExportReport = async () => {
+    try {
+      toast({
+        title: 'Export Started',
+        description: 'Your inventory report is being generated.',
+      });
+
+      const response = await fetch('/api/inventory/export', {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      // Get the filename from the response headers
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filename = contentDisposition
+        ? contentDisposition.split('filename=')[1]?.replace(/"/g, '')
+        : `inventory-export-${new Date().toISOString().split('T')[0]}.csv`;
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: 'Export Complete',
+        description: 'Your inventory report has been downloaded.',
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: 'Export Failed',
+        description: 'Unable to generate the inventory report. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
   
   return (
