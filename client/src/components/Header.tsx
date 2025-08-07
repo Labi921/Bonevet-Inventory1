@@ -1,11 +1,10 @@
 import { Bell, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useLocation, useRouter } from 'wouter';
+import { useLocation, Link } from 'wouter';
 
 export default function Header() {
   const { user } = useAuth();
   const [location] = useLocation();
-  const router = useRouter();
   
   const getPageTitle = () => {
     if (location === '/') return 'Dashboard';
@@ -30,12 +29,11 @@ export default function Header() {
           <button className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-gray-100 rounded-full">
             <Bell className="h-5 w-5" />
           </button>
-          <button 
-            className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-gray-100 rounded-full"
-            onClick={() => router.navigate('/settings')}
-          >
-            <Settings className="h-5 w-5" />
-          </button>
+          <Link href="/settings">
+            <button className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-gray-100 rounded-full">
+              <Settings className="h-5 w-5" />
+            </button>
+          </Link>
           <div className="md:hidden">
             <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center text-white">
               <span className="text-sm font-bold">{user?.name.charAt(0) || 'U'}</span>
