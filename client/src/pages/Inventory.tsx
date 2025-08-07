@@ -52,6 +52,39 @@ export default function Inventory() {
     
     return matchesSearch && matchesCategory && matchesStatus;
   }) : [];
+
+  // Export inventory to CSV
+  const handleExport = async () => {
+    try {
+      const response = await fetch('/api/inventory/export', {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      // Get the filename from the response headers
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filename = contentDisposition 
+        ? contentDisposition.split('filename=')[1]?.replace(/"/g, '') 
+        : `inventory-export-${new Date().toISOString().split('T')[0]}.csv`;
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting inventory:', error);
+    }
+  };
   
   if (isAddItem) {
     return <AddItemForm />;
@@ -75,7 +108,7 @@ export default function Inventory() {
               <PlusCircle className="h-4 w-4 mr-2" /> Add Item
             </a>
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" /> Export
           </Button>
         </div>
