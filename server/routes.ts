@@ -720,6 +720,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Export loans to CSV
+  app.get("/api/loans/export", requireAuth, async (req, res) => {
+    try {
+      const [individualLoans, loanGroups] = await Promise.all([
+        storage.listLoans(),
+        storage.listLoanGroups()
+      ]);
+      
+      // Generate CSV content for all loans
+      const headers = [
+        'Type',
+        'ID',
+        'Item ID/Group ID',
+        'Item Name',
+        'Borrower Name',
+        'Borrower Contact',
+        'Loan Date',
+        'Expected Return',
+        'Actual Return',
+        'Status',
+        'Notes'
+      ];
+      
+      const csvRows = [headers.join(',')];
+      
+      // Add individual loans
+      individualLoans.forEach(loan => {
+        csvRows.push([
+          'Individual',
+          loan.id || '',
+          loan.itemId || '',
+          `"${(loan.itemName || '').replace(/"/g, '""')}"`,
+          `"${(loan.borrowerName || '').replace(/"/g, '""')}"`,
+          `"${(loan.borrowerContact || '').replace(/"/g, '""')}"`,
+          loan.loanDate ? new Date(loan.loanDate).toLocaleDateString() : '',
+          loan.expectedReturnDate ? new Date(loan.expectedReturnDate).toLocaleDateString() : '',
+          loan.actualReturnDate ? new Date(loan.actualReturnDate).toLocaleDateString() : '',
+          loan.status || '',
+          `"${(loan.notes || '').replace(/"/g, '""')}"`
+        ].join(','));
+      });
+      
+      // Add loan groups
+      loanGroups.forEach(group => {
+        const itemNames = Array.isArray(group.items) 
+          ? group.items.map(item => item.name).join('; ')
+          : 'Multiple Items';
+        
+        csvRows.push([
+          'Multi-Item',
+          group.id || '',
+          group.loanGroupId || '',
+          `"${itemNames.replace(/"/g, '""')}"`,
+          `"${(group.borrowerName || '').replace(/"/g, '""')}"`,
+          `"${(group.borrowerContact || '').replace(/"/g, '""')}"`,
+          group.loanDate ? new Date(group.loanDate).toLocaleDateString() : '',
+          group.expectedReturnDate ? new Date(group.expectedReturnDate).toLocaleDateString() : '',
+          group.actualReturnDate ? new Date(group.actualReturnDate).toLocaleDateString() : '',
+          group.status || '',
+          `"${(group.notes || '').replace(/"/g, '""')}"`
+        ].join(','));
+      });
+      
+      const csvContent = csvRows.join('\n');
+      const filename = `loans-export-${new Date().toISOString().split('T')[0]}.csv`;
+      
+      // Set headers for file download
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', Buffer.byteLength(csvContent));
+      
+      // Log the activity
+      await storage.createActivityLog({
+        userId: (req.user as any).id,
+        action: "Export",
+        entityType: "Loan",
+        entityId: "bulk",
+        details: `Exported ${individualLoans.length + loanGroups.length} loan records to CSV`
+      });
+      
+      res.send(csvContent);
+    } catch (error) {
+      console.error('Error exporting loans:', error);
+      res.status(500).json({ message: "Failed to export loans" });
+    }
+  });
+
   // Individual Loan routes
   app.get("/api/loans", requireAuth, async (req, res) => {
     try {

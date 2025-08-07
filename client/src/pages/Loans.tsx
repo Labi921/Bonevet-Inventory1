@@ -126,6 +126,49 @@ export default function Loans() {
     
     return matchesSearch && matchesStatus;
   }) : [];
+
+  // Export loans to CSV
+  const handleExport = async () => {
+    try {
+      const response = await fetch('/api/loans/export', {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      // Get the filename from the response headers
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filename = contentDisposition 
+        ? contentDisposition.split('filename=')[1]?.replace(/"/g, '') 
+        : `loans-export-${new Date().toISOString().split('T')[0]}.csv`;
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Export Successful',
+        description: 'Loan records have been exported to CSV file.',
+      });
+    } catch (error) {
+      console.error('Error exporting loans:', error);
+      toast({
+        title: 'Export Failed',
+        description: 'Failed to export loan records. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
   
   if (isNewLoan) {
     return <LoanForm preselectedItemId={itemIdParam ? parseInt(itemIdParam) : undefined} />;
@@ -161,7 +204,7 @@ export default function Loans() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" /> Export Loan Records
           </Button>
         </div>
