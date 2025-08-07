@@ -89,18 +89,15 @@ export default function Sidebar() {
               <Link 
                 key={item.path} 
                 href={item.path}
+                className={`block py-2.5 px-4 rounded transition duration-200 
+                  ${isActive(item.path) 
+                    ? 'bg-primary-foreground/20 text-primary-foreground' 
+                    : 'hover:bg-primary-foreground/10 text-primary-foreground/80'}`}
               >
-                <a 
-                  className={`block py-2.5 px-4 rounded transition duration-200 
-                    ${isActive(item.path) 
-                      ? 'bg-primary-foreground/20 text-primary-foreground' 
-                      : 'hover:bg-primary-foreground/10 text-primary-foreground/80'}`}
-                >
-                  <div className="flex items-center">
-                    {item.icon}
-                    {item.label}
-                  </div>
-                </a>
+                <div className="flex items-center">
+                  {item.icon}
+                  {item.label}
+                </div>
               </Link>
             ))}
           </nav>
@@ -114,18 +111,15 @@ export default function Sidebar() {
                 <Link 
                   key={item.path} 
                   href={item.path}
+                  className={`block py-2.5 px-4 rounded transition duration-200 
+                    ${isActive(item.path) 
+                      ? 'bg-primary-foreground/20 text-primary-foreground' 
+                      : 'hover:bg-primary-foreground/10 text-primary-foreground/80'}`}
                 >
-                  <a 
-                    className={`block py-2.5 px-4 rounded transition duration-200 
-                      ${isActive(item.path) 
-                        ? 'bg-primary-foreground/20 text-primary-foreground' 
-                        : 'hover:bg-primary-foreground/10 text-primary-foreground/80'}`}
-                  >
-                    <div className="flex items-center">
-                      {item.icon}
-                      {item.label}
-                    </div>
-                  </a>
+                  <div className="flex items-center">
+                    {item.icon}
+                    {item.label}
+                  </div>
                 </Link>
               ))}
             </nav>
