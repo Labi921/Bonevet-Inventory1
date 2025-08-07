@@ -1,6 +1,7 @@
-import { Bell, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocation, Link } from 'wouter';
+import NotificationDropdown from './NotificationDropdown';
 
 export default function Header() {
   const { user } = useAuth();
@@ -26,9 +27,7 @@ export default function Header() {
           <p className="text-sm text-gray-500">Welcome back, {user?.name || 'User'}</p>
         </div>
         <div className="flex items-center space-x-4">
-          <button className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-gray-100 rounded-full">
-            <Bell className="h-5 w-5" />
-          </button>
+          <NotificationDropdown />
           <Link href="/settings">
             <button className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-gray-100 rounded-full">
               <Settings className="h-5 w-5" />
