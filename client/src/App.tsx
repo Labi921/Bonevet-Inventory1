@@ -11,6 +11,7 @@ import Dashboard from "@/pages/Dashboard";
 import Inventory from "@/pages/Inventory";
 import Loans from "@/pages/Loans";
 import Documents from "@/pages/Documents";
+import Reports from "@/pages/Reports";
 import Users from "@/pages/Users";
 import Settings from "@/pages/Settings";
 import AuditLogs from "@/pages/AuditLogs";
@@ -103,6 +104,13 @@ function Router() {
             <Documents />
           </Layout>
         )}
+      </Route>
+      
+      {/* Reports route */}
+      <Route path="/reports">
+        <Layout>
+          <Reports />
+        </Layout>
       </Route>
       
       {/* User routes */}
