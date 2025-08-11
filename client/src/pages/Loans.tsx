@@ -438,10 +438,10 @@ export default function Loans() {
                                                 group.items.map((item: any, idx: number) => (
                                                   <TableRow key={idx}>
                                                     <TableCell className="font-medium">
-                                                      {item.itemId || `Item #${item.id}`}
+                                                      {item.item?.itemId || `Item #${item.itemId || item.id}`}
                                                     </TableCell>
                                                     <TableCell>
-                                                      {item.name || 'Unknown Item'}
+                                                      {item.item?.name || 'Unknown Item'}
                                                     </TableCell>
                                                     <TableCell>
                                                       {item.quantityLoaned || 1}

@@ -328,8 +328,16 @@ export class MemStorage implements IStorage {
     return { ...loanGroup, items: loanItems };
   }
   
-  async listLoanGroups(): Promise<LoanGroup[]> {
-    return Array.from(this.loanGroups.values());
+  async listLoanGroups(): Promise<(LoanGroup & { items: (Loan & { item: InventoryItem })[] })[]> {
+    const loanGroups = Array.from(this.loanGroups.values());
+    const result = [];
+    
+    for (const group of loanGroups) {
+      const items = await this.getLoansByLoanGroupId(group.id);
+      result.push({ ...group, items });
+    }
+    
+    return result;
   }
   
   async updateLoanGroup(id: number, loanGroupData: Partial<Omit<InsertLoanGroup, 'items'>>): Promise<LoanGroup | undefined> {
