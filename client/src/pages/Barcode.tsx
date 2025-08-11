@@ -68,18 +68,26 @@ export default function Barcode() {
   // Generate barcode for a single item optimized for 64x34mm labels
   const generateBarcode = (itemId: string, canvasId: string) => {
     try {
-      JsBarcode(`#${canvasId}`, itemId, {
-        format: "CODE128",
-        width: 1.5,    // Narrower bars to fit in 60mm width
-        height: 20,    // Shorter height to leave room for text
-        displayValue: false, // We'll handle text separately for better control
-        fontSize: 8,
-        margin: 2,     // Minimal margin
-        background: "#ffffff",
-        lineColor: "#000000"
-      });
+      const canvas = document.getElementById(canvasId);
+      if (canvas) {
+        JsBarcode(canvas, itemId, {
+          format: "CODE128",
+          width: 1.5,    // Narrower bars to fit in 60mm width
+          height: 22,    // Shorter height to leave room for text
+          displayValue: false, // We'll handle text separately for better control
+          fontSize: 8,
+          margin: 1,     // Minimal margin
+          background: "#ffffff",
+          lineColor: "#000000",
+          valid: (valid) => {
+            if (!valid) {
+              console.error('Invalid barcode for itemId:', itemId);
+            }
+          }
+        });
+      }
     } catch (error) {
-      console.error('Error generating barcode:', error);
+      console.error('Error generating barcode for', itemId, ':', error);
     }
   };
 
@@ -120,12 +128,14 @@ export default function Barcode() {
           margin: 0;
           padding: 14mm 9mm;
           background: white;
-          font-family: Arial, sans-serif;
+          font-family: 'Arial', sans-serif !important;
           display: grid;
           grid-template-columns: repeat(3, 64mm);
           grid-template-rows: repeat(8, 34mm);
           gap: 0;
           box-sizing: border-box;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         ">
           ${sheetItems.map((item, cellIndex) => `
             <div style="
@@ -141,19 +151,20 @@ export default function Barcode() {
               ${item ? '' : 'visibility: hidden;'}
             ">
               ${item ? `
-                <canvas id="barcode-${startIndex + cellIndex}" style="margin-bottom: 1px;"></canvas>
+                <canvas id="barcode-${startIndex + cellIndex}" style="margin-bottom: 2px;"></canvas>
                 <div style="
-                  font-size: 7px; 
-                  font-weight: bold; 
-                  text-align: center;
-                  line-height: 1.0;
-                  max-width: 100%;
-                  overflow: hidden;
-                  text-overflow: ellipsis;
-                  white-space: nowrap;
+                  font-size: 8px !important; 
+                  font-weight: bold !important; 
+                  text-align: center !important;
+                  line-height: 1.1 !important;
+                  max-width: 58mm !important;
+                  color: #000000 !important;
+                  font-family: 'Arial', sans-serif !important;
+                  -webkit-font-smoothing: antialiased !important;
                 ">
-                  <div style="margin-bottom: 0.5px; max-width: 60mm; overflow: hidden; text-overflow: ellipsis;">${item.name}</div>
-                  ${item.model ? `<div style="font-size: 6px; color: #666; max-width: 60mm; overflow: hidden; text-overflow: ellipsis;">${item.model}</div>` : ''}
+                  <div style="margin-bottom: 1px !important; word-wrap: break-word !important; overflow-wrap: break-word !important; color: #000000 !important;">${item.name}</div>
+                  ${item.model ? `<div style="font-size: 7px !important; color: #333333 !important; word-wrap: break-word !important; overflow-wrap: break-word !important;">${item.model}</div>` : ''}
+                  <div style="font-size: 6px !important; color: #666666 !important; margin-top: 1px !important;">${item.itemId}</div>
                 </div>
               ` : ''}
             </div>
@@ -174,8 +185,8 @@ export default function Barcode() {
       });
     });
 
-    // Wait a bit for barcodes to render
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Wait longer for barcodes to render properly
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     try {
       // Create PDF with multiple pages if needed
@@ -190,12 +201,32 @@ export default function Barcode() {
           }
           
           const canvas = await html2canvas(element as HTMLElement, {
-            scale: 3, // Higher scale for better quality
+            scale: 2, // Reduced scale to avoid text rendering issues
             useCORS: true,
             allowTaint: true,
             backgroundColor: '#ffffff',
-            width: 794, // A4 width in pixels at 96 DPI (210mm)
-            height: 1123 // A4 height in pixels at 96 DPI (297mm)
+            logging: false,
+            letterRendering: true, // Better text rendering
+            removeContainer: true,
+            imageTimeout: 15000,
+            onclone: (clonedDoc) => {
+              // Ensure all fonts and text are properly rendered
+              const clonedElement = clonedDoc.querySelector('[id^="barcode-sheet-"]') as HTMLElement;
+              if (clonedElement) {
+                clonedElement.style.fontFamily = "'Arial', sans-serif";
+                
+                // Force text elements to be visible
+                const textElements = clonedDoc.querySelectorAll('div');
+                textElements.forEach((el: HTMLElement) => {
+                  if (el.textContent && el.textContent.trim()) {
+                    el.style.color = '#000000';
+                    el.style.visibility = 'visible';
+                    el.style.opacity = '1';
+                    el.style.fontFamily = "'Arial', sans-serif";
+                  }
+                });
+              }
+            }
           });
 
           const imgData = canvas.toDataURL('image/png');
