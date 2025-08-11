@@ -40,6 +40,7 @@ export default function Barcode() {
     extra: string[];
   }>({ found: [], missing: [], extra: [] });
   const [isAuditMode, setIsAuditMode] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   
   const barcodePreviewRef = useRef<HTMLDivElement>(null);
 
@@ -64,16 +65,18 @@ export default function Barcode() {
   // Get unique categories
   const categories = Array.from(new Set(inventory.map(item => item.category)));
 
-  // Generate barcode for a single item
+  // Generate barcode for a single item optimized for 64x34mm labels
   const generateBarcode = (itemId: string, canvasId: string) => {
     try {
       JsBarcode(`#${canvasId}`, itemId, {
         format: "CODE128",
-        width: 2,
-        height: 40,
-        displayValue: true,
-        fontSize: 12,
-        margin: 5,
+        width: 1.5,    // Narrower bars to fit in 60mm width
+        height: 20,    // Shorter height to leave room for text
+        displayValue: false, // We'll handle text separately for better control
+        fontSize: 8,
+        margin: 2,     // Minimal margin
+        background: "#ffffff",
+        lineColor: "#000000"
       });
     } catch (error) {
       console.error('Error generating barcode:', error);
@@ -93,88 +96,125 @@ export default function Barcode() {
 
     const selectedInventory = inventory.filter(item => selectedItems.includes(item.id));
     
-    // Create a temporary container for barcode generation
-    const container = document.createElement('div');
-    container.style.position = 'absolute';
-    container.style.left = '-9999px';
-    container.innerHTML = `
-      <div id="barcode-sheet" style="
-        width: 210mm; 
-        height: 297mm; 
-        padding: 15mm; 
-        background: white;
-        font-family: Arial, sans-serif;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 2mm;
-        align-content: flex-start;
-      ">
-        ${selectedInventory.map((item, index) => `
-          <div style="
-            width: 64mm; 
-            height: 34mm; 
-            border: 1px solid #ddd;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 2mm;
-            box-sizing: border-box;
-            page-break-inside: avoid;
-          ">
-            <canvas id="barcode-${index}" style="margin-bottom: 2px;"></canvas>
-            <div style="
-              font-size: 8px; 
-              font-weight: bold; 
-              text-align: center;
-              line-height: 1.1;
-              max-width: 100%;
-              overflow: hidden;
-            ">
-              <div style="margin-bottom: 1px;">${item.name}</div>
-              ${item.model ? `<div style="font-size: 7px; color: #666;">${item.model}</div>` : ''}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `;
+    // Create multiple sheets if needed (24 labels per sheet = 3 columns × 8 rows)
+    const labelsPerSheet = 24;
+    const sheets = [];
     
-    document.body.appendChild(container);
-
-    // Generate individual barcodes
-    selectedInventory.forEach((item, index) => {
-      generateBarcode(item.itemId, `barcode-${index}`);
+    for (let sheetIndex = 0; sheetIndex * labelsPerSheet < selectedInventory.length; sheetIndex++) {
+      const startIndex = sheetIndex * labelsPerSheet;
+      const endIndex = Math.min(startIndex + labelsPerSheet, selectedInventory.length);
+      const sheetItems = selectedInventory.slice(startIndex, endIndex);
+      
+      // Fill remaining cells with empty placeholders to maintain grid structure
+      while (sheetItems.length < labelsPerSheet) {
+        sheetItems.push(null);
+      }
+      
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.innerHTML = `
+        <div id="barcode-sheet-${sheetIndex}" style="
+          width: 210mm; 
+          height: 297mm; 
+          margin: 0;
+          padding: 14mm 9mm;
+          background: white;
+          font-family: Arial, sans-serif;
+          display: grid;
+          grid-template-columns: repeat(3, 64mm);
+          grid-template-rows: repeat(8, 34mm);
+          gap: 0;
+          box-sizing: border-box;
+        ">
+          ${sheetItems.map((item, cellIndex) => `
+            <div style="
+              width: 64mm; 
+              height: 34mm; 
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              padding: 1mm;
+              box-sizing: border-box;
+              overflow: hidden;
+              ${item ? '' : 'visibility: hidden;'}
+            ">
+              ${item ? `
+                <canvas id="barcode-${startIndex + cellIndex}" style="margin-bottom: 1px;"></canvas>
+                <div style="
+                  font-size: 7px; 
+                  font-weight: bold; 
+                  text-align: center;
+                  line-height: 1.0;
+                  max-width: 100%;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  white-space: nowrap;
+                ">
+                  <div style="margin-bottom: 0.5px; max-width: 60mm; overflow: hidden; text-overflow: ellipsis;">${item.name}</div>
+                  ${item.model ? `<div style="font-size: 6px; color: #666; max-width: 60mm; overflow: hidden; text-overflow: ellipsis;">${item.model}</div>` : ''}
+                </div>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+      
+      document.body.appendChild(container);
+      sheets.push({ container, startIndex, endIndex, sheetItems: sheetItems.filter(item => item !== null) });
+    }
+    
+    // Generate individual barcodes for all sheets
+    sheets.forEach(({ startIndex, sheetItems }) => {
+      sheetItems.forEach((item, cellIndex) => {
+        if (item) {
+          generateBarcode(item.itemId, `barcode-${startIndex + cellIndex}`);
+        }
+      });
     });
 
     // Wait a bit for barcodes to render
     await new Promise(resolve => setTimeout(resolve, 500));
 
     try {
-      // Convert to canvas and then PDF
-      const element = document.getElementById('barcode-sheet');
-      if (element) {
-        const canvas = await html2canvas(element, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff'
-        });
+      // Create PDF with multiple pages if needed
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      let isFirstPage = true;
 
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        
-        // A4 dimensions in mm
-        const pageWidth = 210;
-        const pageHeight = 297;
-        
-        pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
-        pdf.save(`barcodes-${new Date().toISOString().split('T')[0]}.pdf`);
+      for (const { container, startIndex, endIndex } of sheets) {
+        const element = container.querySelector(`[id^="barcode-sheet-"]`);
+        if (element) {
+          if (!isFirstPage) {
+            pdf.addPage();
+          }
+          
+          const canvas = await html2canvas(element as HTMLElement, {
+            scale: 3, // Higher scale for better quality
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            width: 794, // A4 width in pixels at 96 DPI (210mm)
+            height: 1123 // A4 height in pixels at 96 DPI (297mm)
+          });
 
-        toast({
-          title: 'Barcodes Generated',
-          description: `PDF with ${selectedItems.length} barcodes has been downloaded.`,
-        });
+          const imgData = canvas.toDataURL('image/png');
+          
+          // A4 dimensions in mm
+          const pageWidth = 210;
+          const pageHeight = 297;
+          
+          pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
+          isFirstPage = false;
+        }
       }
+
+      pdf.save(`barcodes-${new Date().toISOString().split('T')[0]}.pdf`);
+
+      toast({
+        title: 'Barcodes Generated',
+        description: `PDF with ${selectedItems.length} barcodes across ${sheets.length} page(s) has been downloaded.`,
+      });
     } catch (error) {
       console.error('Error generating PDF:', error);
       toast({
@@ -183,8 +223,10 @@ export default function Barcode() {
         variant: 'destructive',
       });
     } finally {
-      // Clean up
-      document.body.removeChild(container);
+      // Clean up all containers
+      sheets.forEach(({ container }) => {
+        document.body.removeChild(container);
+      });
     }
   };
 
@@ -294,6 +336,20 @@ export default function Barcode() {
   const clearSelection = () => {
     setSelectedItems([]);
   };
+
+  // Generate preview barcodes when preview is shown
+  useEffect(() => {
+    if (showPreview && selectedItems.length > 0) {
+      setTimeout(() => {
+        selectedItems.forEach((itemId, index) => {
+          const item = inventory.find(inv => inv.id === itemId);
+          if (item && index < 24) {
+            generateBarcode(item.itemId, `preview-barcode-${index}`);
+          }
+        });
+      }, 100);
+    }
+  }, [showPreview, selectedItems, inventory]);
 
   if (isLoading) {
     return (
@@ -413,18 +469,78 @@ export default function Barcode() {
 
               <Separator />
 
-              {/* Generate Button */}
-              <div className="flex justify-center">
+              {/* Preview and Generate Buttons */}
+              <div className="flex gap-4 justify-center">
+                <Button
+                  onClick={() => setShowPreview(!showPreview)}
+                  disabled={selectedItems.length === 0}
+                  variant="outline"
+                  size="lg"
+                >
+                  <QrCode className="h-4 w-4 mr-2" />
+                  {showPreview ? 'Hide Preview' : 'Preview Layout'}
+                </Button>
                 <Button
                   onClick={generateBarcodeSheet}
                   disabled={selectedItems.length === 0}
-                  className="w-full max-w-md"
                   size="lg"
                 >
                   <Printer className="h-4 w-4 mr-2" />
-                  Generate Barcodes PDF ({selectedItems.length} items)
+                  Generate PDF ({selectedItems.length} items)
                 </Button>
               </div>
+
+              {/* Label Layout Preview */}
+              {showPreview && selectedItems.length > 0 && (
+                <Card className="mt-4">
+                  <CardHeader>
+                    <CardTitle>Label Preview - A4 Sheet (3×8 = 24 labels)</CardTitle>
+                    <CardDescription>
+                      Preview of how your labels will look on A4 paper with Avery 64×34mm format
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="border rounded-lg p-4 bg-white">
+                      <div 
+                        className="grid grid-cols-3 gap-0 mx-auto border"
+                        style={{ 
+                          width: '420px', // Scale down A4 (210mm) to fit screen
+                          height: '594px', // Scale down A4 (297mm) to fit screen
+                          padding: '28px 18px' // Scale down margins (14mm 9mm)
+                        }}
+                      >
+                        {Array.from({ length: 24 }).map((_, index) => {
+                          const item = inventory.find(inv => selectedItems[index] === inv.id);
+                          return (
+                            <div
+                              key={index}
+                              className={`border border-gray-200 flex flex-col items-center justify-center p-1 text-xs ${item ? 'bg-blue-50' : 'bg-gray-50'}`}
+                              style={{
+                                width: '128px', // Scale down 64mm
+                                height: '68px'  // Scale down 34mm
+                              }}
+                            >
+                              {item && (
+                                <>
+                                  <canvas 
+                                    id={`preview-barcode-${index}`}
+                                    className="mb-1"
+                                    style={{ maxWidth: '120px', height: '24px' }}
+                                  />
+                                  <div className="text-center leading-tight">
+                                    <div className="font-bold text-[6px] truncate w-full">{item.name}</div>
+                                    {item.model && <div className="text-[5px] text-gray-600 truncate w-full">{item.model}</div>}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
