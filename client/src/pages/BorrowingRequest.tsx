@@ -117,6 +117,7 @@ Date: ${new Date().toLocaleDateString()}
           title: `Borrowing Request to ${data.centerName} - ${data.requestedDate}`,
           content,
           relatedItemId: data.centerName,
+          signedBy: [],
         }),
       });
     },
@@ -128,13 +129,14 @@ Date: ${new Date().toLocaleDateString()}
       queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
       form.reset();
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error('Error creating borrowing request:', error);
+      const errorMessage = error.message || error.errors?.[0]?.message || 'Please check your information and try again.';
       toast({
         title: 'Failed to Create Request',
-        description: 'Please check your information and try again.',
+        description: errorMessage,
         variant: 'destructive',
       });
-      console.error('Error creating borrowing request:', error);
     },
   });
 
