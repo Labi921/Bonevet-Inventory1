@@ -12,6 +12,7 @@ import Inventory from "@/pages/Inventory";
 import Loans from "@/pages/Loans";
 import Documents from "@/pages/Documents";
 import Reports from "@/pages/Reports";
+import Barcode from "@/pages/Barcode";
 import Users from "@/pages/Users";
 import Settings from "@/pages/Settings";
 import AuditLogs from "@/pages/AuditLogs";
@@ -110,6 +111,12 @@ function Router() {
       <Route path="/reports">
         <Layout>
           <Reports />
+        </Layout>
+      </Route>
+      
+      <Route path="/barcode">
+        <Layout>
+          <Barcode />
         </Layout>
       </Route>
       

@@ -720,6 +720,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Barcode API endpoints
+  app.get("/api/inventory/barcode/:itemId", requireAuth, async (req, res) => {
+    try {
+      const itemId = req.params.itemId;
+      const item = await storage.getInventoryItemByItemId(itemId);
+      
+      if (!item) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+      
+      res.json({
+        found: true,
+        item: {
+          id: item.id,
+          itemId: item.itemId,
+          name: item.name,
+          model: item.model,
+          category: item.category,
+          status: item.status,
+          location: item.location
+        }
+      });
+    } catch (error) {
+      console.error('Error finding item by barcode:', error);
+      res.status(500).json({ message: "Failed to lookup barcode" });
+    }
+  });
+
+  // Generate inventory audit report
+  app.post("/api/inventory/audit", requireAuth, async (req, res) => {
+    try {
+      const { scannedItems, extraBarcodes } = req.body;
+      
+      if (!Array.isArray(scannedItems)) {
+        return res.status(400).json({ message: "Invalid scanned items data" });
+      }
+      
+      const allItems = await storage.listInventoryItems();
+      const foundItemIds = scannedItems.map(item => item.id);
+      const missingItems = allItems.filter(item => !foundItemIds.includes(item.id));
+      
+      const auditReport = {
+        auditDate: new Date().toISOString(),
+        auditedBy: (req.user as any).id,
+        summary: {
+          totalItems: allItems.length,
+          foundItems: scannedItems.length,
+          missingItems: missingItems.length,
+          extraItems: extraBarcodes ? extraBarcodes.length : 0
+        },
+        found: scannedItems,
+        missing: missingItems,
+        extra: extraBarcodes || []
+      };
+
+      // Log the audit activity
+      await storage.createActivityLog({
+        userId: (req.user as any).id,
+        action: "Audit",
+        entityType: "Inventory",
+        entityId: "AUDIT-" + new Date().toISOString().split('T')[0],
+        details: `Completed inventory audit: Found ${scannedItems.length}/${allItems.length} items, ${missingItems.length} missing, ${extraBarcodes?.length || 0} extra`
+      });
+      
+      res.json(auditReport);
+    } catch (error) {
+      console.error('Error generating audit report:', error);
+      res.status(500).json({ message: "Failed to generate audit report" });
+    }
+  });
+
   // Export loans to CSV
   app.get("/api/loans/export", requireAuth, async (req, res) => {
     try {

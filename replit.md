@@ -68,6 +68,14 @@ Preferred communication style: Simple, everyday language.
 - Document versioning and audit trail
 - Template-based content generation
 
+### Barcode System
+- Equipment barcode generation with JsBarcode library
+- Avery 64x34mm label format for A4 printing
+- PDF export with html2canvas and jsPDF
+- Inventory audit functionality with barcode scanning
+- Real-time barcode lookup and validation
+- Comprehensive audit reports with missing/extra item tracking
+
 ## Data Flow
 
 ### Authentication Flow
@@ -108,6 +116,11 @@ Preferred communication style: Simple, everyday language.
 - **tsx**: TypeScript execution for development
 - **esbuild**: Fast JavaScript bundler
 - **@replit/vite-plugin-***: Replit-specific development enhancements
+
+### Barcode Libraries
+- **jsbarcode**: CODE128 barcode generation
+- **html2canvas**: Canvas-based PDF rendering
+- **jspdf**: PDF generation for printable labels
 
 ### File Storage
 - **multer**: Multipart form data handling for file uploads

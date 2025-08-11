@@ -8,6 +8,7 @@ import {
   Handshake,
   FileText,
   BarChart,
+  QrCode,
   Users,
   Settings,
   History,
@@ -48,6 +49,7 @@ export default function Sidebar() {
     { path: '/loans', label: 'Loans', icon: <Handshake className="w-5 h-5 mr-2" /> },
     { path: '/documents', label: 'Documents', icon: <FileText className="w-5 h-5 mr-2" /> },
     { path: '/reports', label: 'Reports', icon: <BarChart className="w-5 h-5 mr-2" /> },
+    { path: '/barcode', label: 'Barcode', icon: <QrCode className="w-5 h-5 mr-2" /> },
   ];
   
   const adminItems = [
