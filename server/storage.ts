@@ -577,7 +577,13 @@ export class MemStorage implements IStorage {
     const item = this.inventoryItems.get(itemId);
     if (!item) return undefined;
     
-    const quantityAvailable = item.quantity - quantityLoaned - quantityDamaged;
+    // Calculate lifecycle quantities from history
+    const lifecycleHistories = Array.from(this.lifecycleHistories.values())
+      .filter(h => h.itemId === itemId);
+    const quantityLifecycled = lifecycleHistories.reduce((sum, h) => sum + h.quantityLifecycled, 0);
+    
+    // Available = Total - Loaned - Damaged - Lifecycled
+    const quantityAvailable = Math.max(0, item.quantity - quantityLoaned - quantityDamaged - quantityLifecycled);
     
     // Determine status based on quantities
     let status = "Available";
