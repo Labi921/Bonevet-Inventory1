@@ -426,10 +426,16 @@ export class MemStorage implements IStorage {
     };
     this.loans.set(id, loan);
     
-    // Update inventory item status
+    // Update inventory item quantities
     const item = await this.getInventoryItem(insertLoan.itemId);
     if (item) {
-      await this.updateInventoryItem(item.id, { status: "Loaned Out" });
+      const quantityLoaned = insertLoan.quantityLoaned || 1;
+      // Update quantities: reduce available, increase loaned
+      await this.updateItemQuantities(
+        insertLoan.itemId, 
+        item.quantityLoaned + quantityLoaned, 
+        item.quantityDamaged
+      );
     }
     
     return loan;
@@ -459,10 +465,15 @@ export class MemStorage implements IStorage {
     };
     this.loans.set(id, updatedLoan);
     
-    // Update inventory item status
+    // Update inventory item quantities: restore available, reduce loaned
     const item = await this.getInventoryItem(loan.itemId);
     if (item) {
-      await this.updateInventoryItem(item.id, { status: "Available" });
+      const quantityReturned = loan.quantityLoaned || 1;
+      await this.updateItemQuantities(
+        loan.itemId, 
+        item.quantityLoaned - quantityReturned, 
+        item.quantityDamaged
+      );
     }
     
     return updatedLoan;

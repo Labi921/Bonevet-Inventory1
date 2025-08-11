@@ -937,14 +937,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Create the loan
+      // Create the loan (storage now handles quantity updates automatically)
       const loan = await storage.createLoan({
         ...validatedData,
         createdBy: (req.user as any).id
       });
-      
-      // Update inventory quantities (reduce available, increase loaned)
-      await storage.updateItemQuantities(itemId, item.quantityLoaned + quantityLoaned, item.quantityDamaged);
       
       // Create a loan document
       const documentId = `DOC-LOAN-${new Date().getFullYear()}-${String(loan.id).padStart(3, "0")}`;
@@ -998,18 +995,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? new Date(req.body.actualReturnDate) 
         : new Date();
       
+      // Mark loan as returned (storage now handles quantity updates automatically)
       const updatedLoan = await storage.markLoanReturned(id, actualReturnDate);
-      
-      // Restore inventory quantities (increase available, decrease loaned)
-      const item = await storage.getInventoryItem(loan.itemId);
-      if (item) {
-        const quantityReturned = loan.quantityLoaned || 1;
-        await storage.updateItemQuantities(
-          loan.itemId, 
-          item.quantityLoaned - quantityReturned, 
-          item.quantityDamaged
-        );
-      }
       
       // Log the activity
       await storage.createActivityLog({
