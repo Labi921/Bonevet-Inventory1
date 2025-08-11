@@ -170,7 +170,7 @@ export const insertLoanSchema = createInsertSchema(loans)
 export const documents = pgTable("documents", {
   id: serial("id").primaryKey(),
   documentId: text("document_id").notNull().unique(), // DOC-ACQ-2023-001
-  type: text("type").notNull(), // Acquisition, Loan
+  type: text("type").notNull(), // Acquisition, Loan, Borrowing Request
   title: text("title").notNull(),
   relatedItemId: text("related_item_id"),
   content: text("content").notNull(),
@@ -181,6 +181,27 @@ export const documents = pgTable("documents", {
 
 export const insertDocumentSchema = createInsertSchema(documents)
   .omit({ id: true, createdAt: true });
+
+// Borrowing Request Schema (specific validation for external borrowing requests)
+export const insertBorrowingRequestSchema = z.object({
+  centerName: z.string().min(1, "Center name is required"),
+  centerContact: z.string().min(1, "Contact information is required"),
+  centerAddress: z.string().min(1, "Address is required"),
+  requestedItems: z.array(z.object({
+    itemName: z.string().min(1, "Item name is required"),
+    quantity: z.number().min(1, "Quantity must be at least 1"),
+    specifications: z.string().optional(),
+    purpose: z.string().min(1, "Purpose is required")
+  })).min(1, "At least one item must be requested"),
+  borrowingPurpose: z.string().min(1, "Purpose of borrowing is required"),
+  requestedDate: z.string().min(1, "Requested date is required"),
+  expectedReturnDate: z.string().min(1, "Expected return date is required"),
+  contactPerson: z.string().min(1, "Contact person is required"),
+  contactPhone: z.string().optional(),
+  contactEmail: z.string().email("Valid email is required"),
+  notes: z.string().optional(),
+  urgencyLevel: z.enum(["Low", "Medium", "High", "Critical"]).default("Medium"),
+});
 
 // Activity Log Model
 export const activityLogs = pgTable("activity_logs", {
@@ -227,3 +248,5 @@ export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
 
 export type LifecycleHistory = typeof lifecycleHistory.$inferSelect;
 export type InsertLifecycleHistory = z.infer<typeof insertLifecycleHistorySchema>;
+
+export type InsertBorrowingRequest = z.infer<typeof insertBorrowingRequestSchema>;

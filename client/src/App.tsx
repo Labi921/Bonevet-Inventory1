@@ -13,6 +13,7 @@ import Loans from "@/pages/Loans";
 import Documents from "@/pages/Documents";
 import Reports from "@/pages/Reports";
 import Barcode from "@/pages/Barcode";
+import BorrowingRequest from "@/pages/BorrowingRequest";
 import Users from "@/pages/Users";
 import Settings from "@/pages/Settings";
 import AuditLogs from "@/pages/AuditLogs";
@@ -117,6 +118,12 @@ function Router() {
       <Route path="/barcode">
         <Layout>
           <Barcode />
+        </Layout>
+      </Route>
+      
+      <Route path="/borrowing-request">
+        <Layout>
+          <BorrowingRequest />
         </Layout>
       </Route>
       

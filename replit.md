@@ -67,6 +67,7 @@ Preferred communication style: Simple, everyday language.
 - Digital signature capabilities
 - Document versioning and audit trail
 - Template-based content generation
+- Borrowing request system for external equipment requests
 
 ### Barcode System
 - Equipment barcode generation with JsBarcode library

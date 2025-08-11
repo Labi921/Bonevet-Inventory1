@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { PlusCircle, Search, Filter } from 'lucide-react';
+import { PlusCircle, Search, Filter, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -58,9 +58,14 @@ export default function Documents() {
       <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between pb-3">
         <CardTitle className="text-lg font-medium">Document Management</CardTitle>
         <div className="mt-3 sm:mt-0 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+          <Button asChild variant="outline">
+            <a href="/borrowing-request">
+              <Building2 className="h-4 w-4 mr-2" /> Borrowing Request
+            </a>
+          </Button>
           <Button asChild>
             <a href="/documents/new">
-              <PlusCircle className="h-4 w-4 mr-2" /> Create New Document
+              <PlusCircle className="h-4 w-4 mr-2" /> Create Document
             </a>
           </Button>
         </div>
