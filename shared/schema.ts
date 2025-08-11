@@ -180,7 +180,7 @@ export const documents = pgTable("documents", {
 });
 
 export const insertDocumentSchema = createInsertSchema(documents)
-  .omit({ id: true, createdAt: true });
+  .omit({ id: true, createdAt: true, createdBy: true });
 
 // Borrowing Request Schema (specific validation for external borrowing requests)
 export const insertBorrowingRequestSchema = z.object({
