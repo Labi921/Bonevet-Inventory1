@@ -49,10 +49,21 @@ Preferred communication style: Simple, everyday language.
 - Context-based authentication state management
 
 ### Inventory Management
-- Item categorization (Furniture, Equipment, Tools, Electronics, Software, Other)
+- Item categorization with 10 new categories:
+  1. Fabrication Equipment (Everything used for creating, cutting, or shaping materials)
+  2. Electronics & IoT (All electrical/electronic components, devices, and tools)
+  3. Tools & Handheld Devices (Manual or portable powered tools)
+  4. Machinery & Heavy Equipment (Large powered machines for workshop use)
+  5. Hardware & Fasteners (Small physical parts for building and assembly)
+  6. Furniture & Fixtures (Physical setup and storage of the workspace)
+  7. Safety & Protection (All safety gear and compliance equipment)
+  8. Software & Digital Resources (All digital tools and licenses)
+  9. Consumables (Items that get used up and need regular restocking)
+  10. Learning & Educational Kits (Items for training, workshops, and teaching)
+- Category selection with hover tooltips showing descriptions
 - Status tracking (Available, In Use, Loaned Out, Damaged, Maintenance)
 - Usage classification (None, Staff, Members, Others)
-- Quantity and pricing management
+- Quantity and pricing management with unitPrice field
 - Location tracking and notes
 
 ### Loan Management

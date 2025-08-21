@@ -57,9 +57,9 @@ export function CategorySelect({
           </SelectTrigger>
         </FormControl>
         <SelectContent>
-          <TooltipProvider>
-            {categories.map((category) => (
-              <Tooltip key={category} delayDuration={300}>
+          {categories.map((category) => (
+            <TooltipProvider key={category}>
+              <Tooltip delayDuration={300}>
                 <TooltipTrigger asChild>
                   <SelectItem value={category} className="cursor-pointer">
                     {category}
@@ -69,8 +69,8 @@ export function CategorySelect({
                   <p className="text-sm">{CATEGORY_DESCRIPTIONS[category]}</p>
                 </TooltipContent>
               </Tooltip>
-            ))}
-          </TooltipProvider>
+            </TooltipProvider>
+          ))}
         </SelectContent>
       </Select>
       <FormMessage />
