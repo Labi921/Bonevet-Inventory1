@@ -83,6 +83,7 @@ export interface IStorage {
   listActiveCategories(): Promise<Category[]>;
   updateCategory(id: number, categoryData: Partial<InsertCategory>): Promise<Category | undefined>;
   deleteCategory(id: number): Promise<boolean>;
+  reorderCategories(categoryIds: number[]): Promise<Category[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -165,13 +166,14 @@ export class MemStorage implements IStorage {
       { name: "Learning & Educational Kits", description: "Items for training, workshops, and teaching" }
     ];
 
-    defaultCategories.forEach(category => {
+    defaultCategories.forEach((category, index) => {
       const id = this.categoryIdCounter++;
       const now = new Date();
       const categoryData: Category = {
         id,
         name: category.name,
         description: category.description,
+        sortOrder: index,
         isActive: true,
         createdAt: now,
         updatedAt: now
@@ -798,9 +800,17 @@ export class MemStorage implements IStorage {
   async createCategory(categoryData: InsertCategory): Promise<Category> {
     const id = this.categoryIdCounter++;
     const now = new Date();
+    
+    // Set sort order to be last
+    const existingCategories = Array.from(this.categories.values());
+    const maxSortOrder = existingCategories.length > 0 
+      ? Math.max(...existingCategories.map(c => c.sortOrder)) 
+      : -1;
+    
     const category: Category = {
       id,
       ...categoryData,
+      sortOrder: categoryData.sortOrder ?? maxSortOrder + 1,
       createdAt: now,
       updatedAt: now
     };
@@ -810,13 +820,30 @@ export class MemStorage implements IStorage {
 
   async listCategories(): Promise<Category[]> {
     return Array.from(this.categories.values())
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => a.sortOrder - b.sortOrder);
   }
 
   async listActiveCategories(): Promise<Category[]> {
     return Array.from(this.categories.values())
       .filter(category => category.isActive)
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+
+  async reorderCategories(categoryIds: number[]): Promise<Category[]> {
+    // Update sort order for all categories based on the new order
+    categoryIds.forEach((categoryId, index) => {
+      const category = this.categories.get(categoryId);
+      if (category) {
+        const updatedCategory = {
+          ...category,
+          sortOrder: index,
+          updatedAt: new Date()
+        };
+        this.categories.set(categoryId, updatedCategory);
+      }
+    });
+    
+    return this.listCategories();
   }
 
   async updateCategory(id: number, categoryData: Partial<InsertCategory>): Promise<Category | undefined> {

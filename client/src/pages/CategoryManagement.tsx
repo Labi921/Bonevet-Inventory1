@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
-import { Plus, Edit, Trash2, ArrowLeft, Save, X } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowLeft, Save, X, GripVertical } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,6 +33,7 @@ interface Category {
   id: number;
   name: string;
   description: string;
+  sortOrder: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -124,6 +126,24 @@ export default function CategoryManagement() {
     },
   });
 
+  // Reorder categories mutation
+  const reorderCategoriesMutation = useMutation({
+    mutationFn: async (categoryIds: number[]) => {
+      return apiRequest('PUT', '/api/categories/reorder', { categoryIds });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/categories'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/categories/active'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reorder categories",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateCategory = () => {
     if (!formData.name.trim() || !formData.description.trim()) {
       toast({
@@ -172,6 +192,25 @@ export default function CategoryManagement() {
     setShowAddDialog(false);
   };
 
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination || !categories) {
+      return;
+    }
+
+    const items = Array.from(categories);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    // Extract the new order of category IDs
+    const newOrder = items.map(item => item.id);
+    
+    // Optimistically update the UI
+    queryClient.setQueryData(['/api/categories'], items);
+    
+    // Send the new order to the server
+    reorderCategoriesMutation.mutate(newOrder);
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -187,7 +226,7 @@ export default function CategoryManagement() {
           </Button>
           <CardTitle className="text-xl">Category Management</CardTitle>
           <p className="text-sm text-gray-600 mt-1">
-            Manage inventory categories and their descriptions
+            Manage inventory categories, their descriptions, and order. Drag and drop to reorder.
           </p>
         </div>
         <Button onClick={() => setShowAddDialog(true)}>
@@ -216,41 +255,76 @@ export default function CategoryManagement() {
         ) : (
           <div className="space-y-4">
             {categories && categories.length > 0 ? (
-              categories.map((category) => (
-                <div key={category.id} className="p-4 border rounded-lg hover:shadow-sm transition-shadow">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-medium text-lg">{category.name}</h3>
-                        <Badge variant={category.isActive ? "default" : "secondary"}>
-                          {category.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </div>
-                      <p className="text-gray-600 text-sm mb-2">{category.description}</p>
-                      <p className="text-xs text-gray-400">
-                        Created: {new Date(category.createdAt).toLocaleDateString()}
-                      </p>
+              <DragDropContext onDragEnd={handleDragEnd}>
+                <Droppable droppableId="categories">
+                  {(provided) => (
+                    <div
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                      className="space-y-4"
+                    >
+                      {categories.map((category, index) => (
+                        <Draggable
+                          key={category.id}
+                          draggableId={category.id.toString()}
+                          index={index}
+                        >
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className={`p-4 border rounded-lg transition-shadow ${
+                                snapshot.isDragging 
+                                  ? 'shadow-lg bg-gray-50' 
+                                  : 'hover:shadow-sm'
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div
+                                  {...provided.dragHandleProps}
+                                  className="mt-1 cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+                                >
+                                  <GripVertical className="h-5 w-5" />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <h3 className="font-medium text-lg">{category.name}</h3>
+                                    <Badge variant={category.isActive ? "default" : "secondary"}>
+                                      {category.isActive ? "Active" : "Inactive"}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-gray-600 text-sm mb-2">{category.description}</p>
+                                  <p className="text-xs text-gray-400">
+                                    Created: {new Date(category.createdAt).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <div className="flex space-x-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEditCategory(category)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setDeleteCategory(category)}
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
                     </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditCategory(category)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDeleteCategory(category)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))
+                  )}
+                </Droppable>
+              </DragDropContext>
             ) : (
               <div className="text-center py-12">
                 <p className="text-gray-500">No categories found</p>

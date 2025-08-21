@@ -1398,6 +1398,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/categories/reorder", requireAuth, async (req, res) => {
+    try {
+      const { categoryIds } = req.body;
+      if (!Array.isArray(categoryIds)) {
+        return res.status(400).json({ message: "categoryIds must be an array" });
+      }
+      
+      const reorderedCategories = await storage.reorderCategories(categoryIds);
+      res.json(reorderedCategories);
+    } catch (error) {
+      console.error("Error reordering categories:", error);
+      res.status(500).json({ message: "Failed to reorder categories" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
