@@ -187,8 +187,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // User routes (Super Admin only)
-  app.get("/api/users", requireSuperAdmin, async (req, res) => {
+  // User Management middleware - Admin and Super Admin can manage users
+  const requireUserManagement = (req: Request, res: Response, next: any) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    const user = req.user as any;
+    if (!user || !['admin', 'super_admin'].includes(user.role)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    next();
+  };
+
+  // User routes (Admin and Super Admin)
+  app.get("/api/users", requireUserManagement, async (req, res) => {
     try {
       const users = await storage.listUsers();
       res.json(users.map(user => ({ ...user, password: undefined })));
@@ -197,8 +209,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/users", requireSuperAdmin, validateSchema(insertUserSchema), async (req, res) => {
+  app.post("/api/users", requireUserManagement, validateSchema(insertUserSchema), async (req, res) => {
     try {
+      const currentUser = req.user as any;
+      const requestedRole = req.body.role;
+      
+      // Check role creation permissions:
+      // - Admin can create: admin, standard_user, staff_user
+      // - Super Admin can create: any role including super_admin
+      if (currentUser.role === 'admin' && requestedRole === 'super_admin') {
+        return res.status(403).json({ message: "Admin users cannot create Super Admin accounts" });
+      }
+      
       const existingUser = await storage.getUserByUsername(req.body.username);
       if (existingUser) {
         return res.status(400).json({ message: "Username already taken" });
@@ -207,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Log the activity
       await storage.createActivityLog({
-        userId: (req.user as any).id,
+        userId: currentUser.id,
         action: "Create",
         entityType: "User",
         entityId: user.id.toString(),
@@ -221,10 +243,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add PUT and DELETE routes for users
-  app.put("/api/users/:id", requireSuperAdmin, async (req, res) => {
+  app.put("/api/users/:id", requireUserManagement, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      const currentUser = req.user as any;
       const validatedData = insertUserSchema.partial().parse(req.body);
+      
+      // Check role modification permissions:
+      // - Admin can modify: admin, standard_user, staff_user
+      // - Super Admin can modify: any role including super_admin
+      if (validatedData.role === 'super_admin' && currentUser.role === 'admin') {
+        return res.status(403).json({ message: "Admin users cannot create or modify Super Admin accounts" });
+      }
+      
+      // Get the target user to check if they're trying to modify a Super Admin
+      const targetUser = await storage.getUser(id);
+      if (targetUser && targetUser.role === 'super_admin' && currentUser.role === 'admin') {
+        return res.status(403).json({ message: "Admin users cannot modify Super Admin accounts" });
+      }
+      
       const user = await storage.updateUser(id, validatedData);
       
       if (!user) {
@@ -241,9 +278,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/users/:id", requireSuperAdmin, async (req, res) => {
+  app.delete("/api/users/:id", requireUserManagement, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      const currentUser = req.user as any;
+      
+      // Get the target user to check if they're trying to delete a Super Admin
+      const targetUser = await storage.getUser(id);
+      if (targetUser && targetUser.role === 'super_admin' && currentUser.role === 'admin') {
+        return res.status(403).json({ message: "Admin users cannot delete Super Admin accounts" });
+      }
+      
       const success = await storage.deleteUser(id);
       
       if (!success) {

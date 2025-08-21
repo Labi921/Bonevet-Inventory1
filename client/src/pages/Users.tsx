@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -53,9 +54,22 @@ const ROLE_DESCRIPTIONS = {
 
 export default function Users() {
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  
+  // Get available roles based on current user
+  const getAvailableRoles = () => {
+    if (currentUser?.role === 'super_admin') {
+      return ['super_admin', 'admin', 'standard_user', 'staff_user'];
+    } else if (currentUser?.role === 'admin') {
+      return ['admin', 'standard_user', 'staff_user'];
+    }
+    return [];
+  };
+  
+  const availableRoles = getAvailableRoles();
 
   // Fetch users
   const { data: users = [], isLoading } = useQuery<User[]>({
@@ -164,9 +178,35 @@ export default function Users() {
   };
 
   const handleDelete = (user: User) => {
+    // Prevent Admin users from deleting Super Admin accounts
+    if (currentUser?.role === 'admin' && user.role === 'super_admin') {
+      toast({
+        title: 'Access Denied',
+        description: 'Admin users cannot delete Super Admin accounts',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     if (confirm(`Are you sure you want to delete user "${user.name}"?`)) {
       deleteMutation.mutate(user.id);
     }
+  };
+  
+  const canEditUser = (user: User) => {
+    // Admin users cannot edit Super Admin accounts
+    if (currentUser?.role === 'admin' && user.role === 'super_admin') {
+      return false;
+    }
+    return true;
+  };
+  
+  const canDeleteUser = (user: User) => {
+    // Admin users cannot delete Super Admin accounts
+    if (currentUser?.role === 'admin' && user.role === 'super_admin') {
+      return false;
+    }
+    return true;
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -272,10 +312,10 @@ export default function Users() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                          {availableRoles.map((value) => (
                             <SelectItem key={value} value={value}>
                               <div>
-                                <div>{label}</div>
+                                <div>{ROLE_LABELS[value as keyof typeof ROLE_LABELS]}</div>
                                 <div className="text-xs text-muted-foreground">
                                   {ROLE_DESCRIPTIONS[value as keyof typeof ROLE_DESCRIPTIONS]}
                                 </div>
@@ -367,6 +407,8 @@ export default function Users() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEdit(user)}
+                          disabled={!canEditUser(user)}
+                          title={!canEditUser(user) ? 'Cannot edit Super Admin accounts' : 'Edit user'}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -374,7 +416,9 @@ export default function Users() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDelete(user)}
-                          className="text-red-600 hover:text-red-700"
+                          disabled={!canDeleteUser(user)}
+                          title={!canDeleteUser(user) ? 'Cannot delete Super Admin accounts' : 'Delete user'}
+                          className="text-red-600 hover:text-red-700 disabled:text-gray-400"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -453,10 +497,10 @@ export default function Users() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                          {availableRoles.map((value) => (
                             <SelectItem key={value} value={value}>
                               <div>
-                                <div>{label}</div>
+                                <div>{ROLE_LABELS[value as keyof typeof ROLE_LABELS]}</div>
                                 <div className="text-xs text-muted-foreground">
                                   {ROLE_DESCRIPTIONS[value as keyof typeof ROLE_DESCRIPTIONS]}
                                 </div>

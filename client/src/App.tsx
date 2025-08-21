@@ -177,23 +177,29 @@ function Router() {
         </Layout>
       </Route>
       
-      {/* User routes */}
+      {/* User routes - Admin and Super Admin only */}
       <Route path="/users">
         <Layout>
-          <Users />
+          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+            <Users />
+          </ProtectedRoute>
         </Layout>
       </Route>
       
       <Route path="/users/add">
         <Layout>
-          <Users />
+          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+            <Users />
+          </ProtectedRoute>
         </Layout>
       </Route>
       
       <Route path="/users/edit/:id">
         {(params) => (
           <Layout>
-            <Users />
+            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+              <Users />
+            </ProtectedRoute>
           </Layout>
         )}
       </Route>
@@ -207,13 +213,17 @@ function Router() {
       
       <Route path="/settings">
         <Layout>
-          <Settings />
+          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+            <Settings />
+          </ProtectedRoute>
         </Layout>
       </Route>
       
       <Route path="/audit-logs">
         <Layout>
-          <AuditLogs />
+          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+            <AuditLogs />
+          </ProtectedRoute>
         </Layout>
       </Route>
       

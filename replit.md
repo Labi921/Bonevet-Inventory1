@@ -10,6 +10,14 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### August 2025 - Enhanced Admin Permissions for User Management
+- Updated permission system to allow Admin users to create and manage other users
+- Admin users can now create: Admin, Standard User, and Staff User accounts
+- Super Admin account creation remains restricted to Super Admin users only
+- Added role-based form restrictions in frontend user management interface
+- Enhanced UI with disabled edit/delete buttons for unauthorized operations
+- Implemented comprehensive permission validation on both frontend and backend
+
 ### December 2024 - Role-Based User Management System
 - Implemented comprehensive user management system with four distinct role types
 - Added Resources library for staff users to access equipment manuals and videos
@@ -54,8 +62,8 @@ Preferred communication style: Simple, everyday language.
 ### Authentication System
 - Session-based authentication with Passport.js
 - Role-based access control with four user types:
-  - Super Admin: Full access including user management
-  - Admin: Can manage inventory, documents, and resources
+  - Super Admin: Full access including user management and Super Admin creation
+  - Admin: Can manage inventory, documents, resources, and create/manage users (except Super Admin)
   - Standard User: Can add products via CSV and view inventory
   - Staff User: Access to resources, manuals, and repair guides
 - Protected routes with authentication middleware
