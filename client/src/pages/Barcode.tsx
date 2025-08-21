@@ -70,6 +70,7 @@ export default function Barcode() {
     try {
       const canvas = document.getElementById(canvasId);
       if (canvas) {
+        console.log(`Generating barcode for itemId: ${itemId} on canvas: ${canvasId}`);
         JsBarcode(canvas, itemId, {
           format: "CODE128",
           width: 1.5,    // Narrower bars to fit in 60mm width
@@ -82,9 +83,13 @@ export default function Barcode() {
           valid: (valid) => {
             if (!valid) {
               console.error('Invalid barcode for itemId:', itemId);
+            } else {
+              console.log(`Successfully generated barcode for: ${itemId}`);
             }
           }
         });
+      } else {
+        console.error('Canvas not found for canvasId:', canvasId);
       }
     } catch (error) {
       console.error('Error generating barcode for', itemId, ':', error);
@@ -115,7 +120,7 @@ export default function Barcode() {
       
       // Fill remaining cells with empty placeholders to maintain grid structure
       while (sheetItems.length < labelsPerSheet) {
-        sheetItems.push(null);
+        sheetItems.push(null as any);
       }
       
       const container = document.createElement('div');
@@ -206,7 +211,6 @@ export default function Barcode() {
             allowTaint: true,
             backgroundColor: '#ffffff',
             logging: false,
-            letterRendering: true, // Better text rendering
             removeContainer: true,
             imageTimeout: 15000,
             onclone: (clonedDoc) => {
