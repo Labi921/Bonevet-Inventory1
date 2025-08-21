@@ -27,7 +27,7 @@ interface CSVRow {
   category: string;
   status?: string;
   quantity?: number;
-  price?: number;
+  unitPrice?: number;
   usage?: string;
   location?: string;
   notes?: string;
@@ -129,8 +129,10 @@ export default function CSVImport() {
             row.quantity = value ? parseInt(value) : 1;
             break;
           case 'price':
+          case 'unitprice':
+          case 'unit price':
           case 'cost':
-            row.price = value ? parseFloat(value.replace(/[$,]/g, '')) : undefined;
+            row.unitPrice = value ? parseFloat(value.replace(/[$,]/g, '')) : undefined;
             break;
           case 'usage':
             row.usage = value || 'None';
@@ -185,8 +187,8 @@ export default function CSVImport() {
         rowErrors.push('Quantity must be a positive number');
       }
 
-      if (row.price && (isNaN(row.price) || row.price < 0)) {
-        rowErrors.push('Price must be a non-negative number');
+      if (row.unitPrice && (isNaN(row.unitPrice) || row.unitPrice < 0)) {
+        rowErrors.push('Unit price must be a non-negative number');
       }
 
       if (rowErrors.length > 0) {
@@ -277,7 +279,7 @@ export default function CSVImport() {
       'category',
       'status',
       'quantity',
-      'price',
+      'unitPrice',
       'usage',
       'location',
       'notes'

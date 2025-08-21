@@ -43,8 +43,8 @@ const formSchema = z.object({
       return isNaN(num) ? 1 : num;
     })
   ]).default(1),
-  price: z.union([
-    z.number().min(0, "Price must be a positive number").optional(),
+  unitPrice: z.union([
+    z.number().min(0, "Unit price must be a positive number").optional(),
     z.string().transform((val) => {
       if (!val) return undefined;
       const num = parseFloat(val);
@@ -72,7 +72,7 @@ export default function AddItemForm() {
       status: 'Available',
       location: '',
       quantity: 1,
-      price: undefined,
+      unitPrice: undefined,
       usage: 'None',
       notes: '',
     },
@@ -321,10 +321,10 @@ export default function AddItemForm() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="price"
+                name="unitPrice"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price (€)</FormLabel>
+                    <FormLabel>Unit Price (€)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"

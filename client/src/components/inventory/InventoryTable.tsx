@@ -67,6 +67,14 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
     }
   };
   
+  // Calculate grand total
+  const grandTotal = items?.reduce((total, item) => {
+    if (item.unitPrice && item.quantity) {
+      return total + (item.unitPrice * item.quantity);
+    }
+    return total;
+  }, 0) || 0;
+
   return (
     <div>
       <div className="rounded-md border">
@@ -79,7 +87,8 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
               <TableHead>Status</TableHead>
               <TableHead>Location</TableHead>
               <TableHead className="w-[80px]">Quantity</TableHead>
-              <TableHead>Price</TableHead>
+              <TableHead className="text-right">Unit Price</TableHead>
+              <TableHead className="text-right">Total Price</TableHead>
               <TableHead>Lifecycle</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -106,8 +115,11 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
                   <TableCell>
                     <div className="w-12 h-5 bg-gray-200 animate-pulse rounded"></div>
                   </TableCell>
-                  <TableCell>
-                    <div className="w-16 h-5 bg-gray-200 animate-pulse rounded"></div>
+                  <TableCell className="text-right">
+                    <div className="w-16 h-5 bg-gray-200 animate-pulse rounded ml-auto"></div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="w-20 h-5 bg-gray-200 animate-pulse rounded ml-auto"></div>
                   </TableCell>
                   <TableCell>
                     <div className="w-20 h-5 bg-gray-200 animate-pulse rounded"></div>
@@ -149,7 +161,12 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{item.price ? `€${item.price.toFixed(2)}` : '-'}</TableCell>
+                  <TableCell className="text-right font-mono">
+                    {item.unitPrice ? `€${item.unitPrice.toFixed(2)}` : '-'}
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-semibold">
+                    {item.unitPrice && item.quantity ? `€${(item.unitPrice * item.quantity).toFixed(2)}` : '-'}
+                  </TableCell>
                   <TableCell>
                     {item.lifecycleStatuses && item.lifecycleStatuses.length > 0 ? (
                       <div className="space-y-1">
@@ -218,9 +235,21 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center">
+                <TableCell colSpan={10} className="h-24 text-center">
                   {items?.length === 0 ? 'No items found. Try a different search or add a new item.' : 'Error loading inventory data.'}
                 </TableCell>
+              </TableRow>
+            )}
+            {/* Grand Total Row */}
+            {items && items.length > 0 && (
+              <TableRow className="bg-gray-50 border-t-2 font-semibold">
+                <TableCell colSpan={6} className="text-right font-bold">
+                  Total Investment:
+                </TableCell>
+                <TableCell className="text-right font-mono font-bold text-lg text-green-700">
+                  €{grandTotal.toFixed(2)}
+                </TableCell>
+                <TableCell colSpan={3}></TableCell>
               </TableRow>
             )}
           </TableBody>

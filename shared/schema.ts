@@ -72,7 +72,7 @@ export const inventoryItems = pgTable("inventory_items", {
   quantityAvailable: integer("quantity_available").notNull().default(1), // Available for loan
   quantityLoaned: integer("quantity_loaned").notNull().default(0), // Currently loaned out
   quantityDamaged: integer("quantity_damaged").notNull().default(0), // Damaged/under repair
-  price: real("price"),
+  unitPrice: real("unit_price"),
   usage: text("usage").default("None"),
   notes: text("notes"),
   imagePath: text("image_path"), // Path to uploaded image
