@@ -91,7 +91,7 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
               <TableHead className="w-[80px]">Quantity</TableHead>
               <TableHead className="text-right">Unit Price</TableHead>
               <TableHead className="text-right">Total Price</TableHead>
-              <TableHead>Lifecycle</TableHead>
+              <TableHead className="text-center">In Lifecycle</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -192,29 +192,17 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
                     {item.unitPrice && item.quantity ? `€${(item.unitPrice * item.quantity).toFixed(2)}` : '-'}
                   </TableCell>
                   <TableCell>
-                    {item.lifecycleStatuses && item.lifecycleStatuses.length > 0 ? (
-                      <div className="space-y-1">
-                        {item.lifecycleStatuses.map((status: string, index: number) => (
-                          <span 
-                            key={index}
-                            className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800"
-                          >
-                            {status}
-                          </span>
-                        ))}
-                        {item.quantityLifecycled > 0 && (
-                          <div className="text-xs text-purple-600 font-medium">
-                            {item.quantityLifecycled} units lifecycled
-                          </div>
-                        )}
-                        {item.lifecycleDate && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            {format(new Date(item.lifecycleDate), 'MMM dd, yyyy')}
-                          </div>
-                        )}
+                    {item.quantityLifecycled > 0 ? (
+                      <div className="text-center">
+                        <div className="text-sm font-medium text-purple-600">
+                          {item.quantityLifecycled}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          units
+                        </div>
                       </div>
                     ) : (
-                      '-'
+                      <div className="text-center text-gray-400">-</div>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
