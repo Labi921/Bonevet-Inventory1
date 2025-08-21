@@ -229,7 +229,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate CSV content
       const headers = [
         'Item ID',
-        'Name', 
+        'Name',
+        'Model',
         'Category',
         'Status',
         'Quantity Total',
@@ -248,6 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...items.map(item => [
           item.itemId || '',
           `"${(item.name || '').replace(/"/g, '""')}"`,
+          `"${(item.model || '').replace(/"/g, '""')}"`,
           item.category || '',
           item.status || '',
           item.quantity || 0,

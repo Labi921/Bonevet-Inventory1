@@ -278,47 +278,63 @@ export default function CSVImport() {
   // Download sample CSV template
   const downloadTemplate = () => {
     const headers = [
-      'name',
-      'model',
-      'category',
-      'status',
-      'quantity',
-      'unitPrice',
-      'usage',
-      'location',
-      'notes'
+      'Item ID',
+      'Name',
+      'Model',
+      'Category',
+      'Status',
+      'Quantity Total',
+      'Quantity Available',
+      'Quantity Loaned',
+      'Quantity Damaged',
+      'Unit Price',
+      'Usage',
+      'Location',
+      'Notes'
     ];
 
     const sampleData = [
       [
+        'BVGJK0100',
         'Sample Equipment 1',
         'Model ABC',
         'Electronics',
         'Available',
         '2',
-        '150.00',
+        '2',
+        '0',
+        '0',
+        '€150.00',
         'Staff',
         'Lab Room 1',
         'Sample electronic device'
       ],
       [
+        'BVGJK0101',
         'Sample Furniture',
         'Office Chair',
         'Furniture',
         'Available',
         '5',
-        '89.99',
+        '5',
+        '0',
+        '0',
+        '€89.99',
         'Members',
         'Office Floor 2',
         'Ergonomic office chairs'
       ],
       [
+        'BVGJK0102',
         'Sample Tool',
         'Drill Set',
         'Tools',
         'Available',
         '1',
-        '75.50',
+        '1',
+        '0',
+        '0',
+        '€75.50',
         'Staff',
         'Workshop',
         'Professional drill with bits'
