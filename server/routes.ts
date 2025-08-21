@@ -1405,6 +1405,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "categoryIds must be an array" });
       }
       
+      // Validate that all items are numbers
+      if (!categoryIds.every(id => typeof id === 'number')) {
+        return res.status(400).json({ message: "All category IDs must be numbers" });
+      }
+      
       const reorderedCategories = await storage.reorderCategories(categoryIds);
       res.json(reorderedCategories);
     } catch (error) {
