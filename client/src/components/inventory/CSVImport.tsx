@@ -285,30 +285,126 @@ export default function CSVImport() {
 
     const sampleData = [
       [
-        'Sample Equipment',
-        'Model X',
+        'Sample Equipment 1',
+        'Model ABC',
         'Electronics',
         'Available',
-        '1',
-        '299.99',
+        '2',
+        '150.00',
         'Staff',
-        'Room 101',
-        'Sample notes'
+        'Lab Room 1',
+        'Sample electronic device'
+      ],
+      [
+        'Sample Furniture',
+        'Office Chair',
+        'Furniture',
+        'Available',
+        '5',
+        '89.99',
+        'Members',
+        'Office Floor 2',
+        'Ergonomic office chairs'
+      ],
+      [
+        'Sample Tool',
+        'Drill Set',
+        'Tools',
+        'Available',
+        '1',
+        '75.50',
+        'Staff',
+        'Workshop',
+        'Professional drill with bits'
       ]
     ];
 
-    const csvContent = [
-      headers.join(','),
-      ...sampleData.map(row => row.join(','))
-    ].join('\n');
+    // Properly escape CSV values with quotes and handle commas
+    const escapeCsvValue = (value: string) => {
+      if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+        return `"${value.replace(/"/g, '""')}"`;
+      }
+      return value;
+    };
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'inventory_template.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
+    const csvContent = [
+      headers.map(escapeCsvValue).join(','),
+      ...sampleData.map(row => row.map(escapeCsvValue).join(','))
+    ].join('\r\n'); // Use \r\n for better compatibility
+
+    try {
+      // Check if browser supports Blob and URL.createObjectURL
+      if (typeof Blob !== 'undefined' && window.URL && window.URL.createObjectURL) {
+        const blob = new Blob([csvContent], { 
+          type: 'text/csv;charset=utf-8;' 
+        });
+        
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'inventory_import_template.csv';
+        link.style.display = 'none';
+        
+        // Add to DOM, click, and clean up
+        document.body.appendChild(link);
+        link.click();
+        
+        // Clean up after a short delay to ensure download starts
+        setTimeout(() => {
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        }, 100);
+        
+        toast({
+          title: 'Template Downloaded',
+          description: 'CSV template has been downloaded successfully.',
+        });
+      } else {
+        // Fallback for older browsers - use data URI
+        const dataUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
+        const link = document.createElement('a');
+        link.href = dataUri;
+        link.download = 'inventory_import_template.csv';
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        
+        setTimeout(() => {
+          document.body.removeChild(link);
+        }, 100);
+        
+        toast({
+          title: 'Template Downloaded',
+          description: 'CSV template has been downloaded successfully.',
+        });
+      }
+    } catch (error) {
+      console.error('Error downloading template:', error);
+      
+      // Last resort fallback - copy to clipboard
+      try {
+        navigator.clipboard.writeText(csvContent).then(() => {
+          toast({
+            title: 'Template Copied',
+            description: 'CSV template copied to clipboard. Paste it into a text file and save as .csv',
+          });
+        }).catch(() => {
+          toast({
+            title: 'Download Failed',
+            description: 'Unable to download or copy template. Please check your browser settings.',
+            variant: 'destructive',
+          });
+        });
+      } catch (clipboardError) {
+        toast({
+          title: 'Download Failed',
+          description: 'Unable to download template. Please try again or use a different browser.',
+          variant: 'destructive',
+        });
+      }
+    }
   };
 
   return (
@@ -493,11 +589,14 @@ export default function CSVImport() {
           <AlertDescription>
             <div className="font-medium mb-2">CSV Format Requirements:</div>
             <ul className="text-sm space-y-1">
-              <li>• <strong>Required:</strong> name, category</li>
-              <li>• <strong>Optional:</strong> model, status, quantity, price, usage, location, notes</li>
-              <li>• <strong>Categories:</strong> {validCategories.join(', ')}</li>
-              <li>• <strong>Statuses:</strong> {validStatuses.join(', ')}</li>
-              <li>• Items with existing Item IDs will be updated, new ones will be created</li>
+              <li>• <strong>Required fields:</strong> name, category</li>
+              <li>• <strong>Optional fields:</strong> model, status, quantity, price, usage, location, notes</li>
+              <li>• <strong>Valid categories:</strong> {validCategories.join(', ')}</li>
+              <li>• <strong>Valid statuses:</strong> {validStatuses.join(', ')}</li>
+              <li>• <strong>Valid usage types:</strong> {validUsages.join(', ')}</li>
+              <li>• Items with existing names will be updated, new ones will be created</li>
+              <li>• Quantity and price must be positive numbers</li>
+              <li>• Use commas as separators, quotes around text with commas</li>
             </ul>
           </AlertDescription>
         </Alert>
