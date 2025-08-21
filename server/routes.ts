@@ -1358,6 +1358,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // IMPORTANT: Place reorder route BEFORE the :id route to avoid parameter conflicts
+  app.put("/api/categories/reorder", requireAuth, async (req, res) => {
+    try {
+      const { categoryIds } = req.body;
+      if (!Array.isArray(categoryIds)) {
+        return res.status(400).json({ message: "categoryIds must be an array" });
+      }
+      
+      // Validate that all items are numbers
+      if (!categoryIds.every(id => typeof id === 'number')) {
+        return res.status(400).json({ message: "All category IDs must be numbers" });
+      }
+      
+      const reorderedCategories = await storage.reorderCategories(categoryIds);
+      res.json(reorderedCategories);
+    } catch (error) {
+      console.error("Error reordering categories:", error);
+      res.status(500).json({ message: "Failed to reorder categories" });
+    }
+  });
+
   app.put("/api/categories/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -1395,26 +1416,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting category:", error);
       res.status(500).json({ message: "Failed to delete category" });
-    }
-  });
-
-  app.put("/api/categories/reorder", requireAuth, async (req, res) => {
-    try {
-      const { categoryIds } = req.body;
-      if (!Array.isArray(categoryIds)) {
-        return res.status(400).json({ message: "categoryIds must be an array" });
-      }
-      
-      // Validate that all items are numbers
-      if (!categoryIds.every(id => typeof id === 'number')) {
-        return res.status(400).json({ message: "All category IDs must be numbers" });
-      }
-      
-      const reorderedCategories = await storage.reorderCategories(categoryIds);
-      res.json(reorderedCategories);
-    } catch (error) {
-      console.error("Error reordering categories:", error);
-      res.status(500).json({ message: "Failed to reorder categories" });
     }
   });
 
