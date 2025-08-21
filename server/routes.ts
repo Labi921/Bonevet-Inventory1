@@ -414,11 +414,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         formData.quantity = parseInt(formData.quantity);
       }
       
-      // Convert price to number
-      if (formData.price && formData.price !== '') {
-        formData.price = parseFloat(formData.price);
+      // Convert unitPrice to number
+      if (formData.unitPrice && formData.unitPrice !== '') {
+        formData.unitPrice = parseFloat(formData.unitPrice);
       } else {
-        delete formData.price; // Remove empty price field
+        delete formData.unitPrice; // Remove empty unitPrice field
       }
       
       // Validate the form data
@@ -477,11 +477,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updateData.quantity = parseInt(updateData.quantity);
       }
       
-      // Convert price to number
-      if (updateData.price && updateData.price !== '') {
-        updateData.price = parseFloat(updateData.price);
-      } else if (updateData.price === '') {
-        delete updateData.price; // Remove empty price field
+      // Convert unitPrice to number
+      if (updateData.unitPrice && updateData.unitPrice !== '') {
+        updateData.unitPrice = parseFloat(updateData.unitPrice);
+      } else if (updateData.unitPrice === '') {
+        delete updateData.unitPrice; // Remove empty unitPrice field
       }
       
       // Add image path if uploaded
