@@ -5,7 +5,8 @@ import {
   loans, Loan, InsertLoan,
   documents, Document, InsertDocument,
   activityLogs, ActivityLog, InsertActivityLog,
-  lifecycleHistory, LifecycleHistory, InsertLifecycleHistory
+  lifecycleHistory, LifecycleHistory, InsertLifecycleHistory,
+  categories, Category, InsertCategory
 } from "@shared/schema";
 
 // Storage Interface
@@ -73,6 +74,15 @@ export interface IStorage {
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
   listActivityLogs(): Promise<ActivityLog[]>;
   getRecentActivityLogs(limit: number): Promise<ActivityLog[]>;
+
+  // Category Operations
+  getCategory(id: number): Promise<Category | undefined>;
+  getCategoryByName(name: string): Promise<Category | undefined>;
+  createCategory(category: InsertCategory): Promise<Category>;
+  listCategories(): Promise<Category[]>;
+  listActiveCategories(): Promise<Category[]>;
+  updateCategory(id: number, categoryData: Partial<InsertCategory>): Promise<Category | undefined>;
+  deleteCategory(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -83,6 +93,7 @@ export class MemStorage implements IStorage {
   private documents: Map<number, Document>;
   private activityLogs: Map<number, ActivityLog>;
   private lifecycleHistories: Map<number, LifecycleHistory>;
+  private categories: Map<number, Category>;
   
   private userIdCounter: number;
   private inventoryIdCounter: number;
@@ -91,6 +102,7 @@ export class MemStorage implements IStorage {
   private documentIdCounter: number;
   private activityLogIdCounter: number;
   private lifecycleHistoryIdCounter: number;
+  private categoryIdCounter: number;
 
   constructor() {
     this.users = new Map();
@@ -100,6 +112,7 @@ export class MemStorage implements IStorage {
     this.documents = new Map();
     this.activityLogs = new Map();
     this.lifecycleHistories = new Map();
+    this.categories = new Map();
     
     this.userIdCounter = 1;
     this.inventoryIdCounter = 1;
@@ -108,6 +121,7 @@ export class MemStorage implements IStorage {
     this.documentIdCounter = 1;
     this.activityLogIdCounter = 1;
     this.lifecycleHistoryIdCounter = 1;
+    this.categoryIdCounter = 1;
     
     // Add default admin user
     this.createUser({
@@ -131,6 +145,38 @@ export class MemStorage implements IStorage {
       price: 899,
       usage: "None",
       notes: "3D Printer"
+    });
+
+    // Initialize default categories
+    this.initializeDefaultCategories();
+  }
+
+  private initializeDefaultCategories() {
+    const defaultCategories = [
+      { name: "Fabrication Equipment", description: "Everything used for creating, cutting, or shaping materials" },
+      { name: "Electronics & IoT", description: "All electrical/electronic components, devices, and tools" },
+      { name: "Tools & Handheld Devices", description: "Manual or portable powered tools" },
+      { name: "Machinery & Heavy Equipment", description: "Large powered machines for workshop use" },
+      { name: "Hardware & Fasteners", description: "Small physical parts for building and assembly" },
+      { name: "Furniture & Fixtures", description: "Physical setup and storage of the workspace" },
+      { name: "Safety & Protection", description: "All safety gear and compliance equipment" },
+      { name: "Software & Digital Resources", description: "All digital tools and licenses" },
+      { name: "Consumables", description: "Items that get used up and need regular restocking" },
+      { name: "Learning & Educational Kits", description: "Items for training, workshops, and teaching" }
+    ];
+
+    defaultCategories.forEach(category => {
+      const id = this.categoryIdCounter++;
+      const now = new Date();
+      const categoryData: Category = {
+        id,
+        name: category.name,
+        description: category.description,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now
+      };
+      this.categories.set(id, categoryData);
     });
   }
 
@@ -736,6 +782,58 @@ export class MemStorage implements IStorage {
   async listLifecycleHistory(): Promise<LifecycleHistory[]> {
     return Array.from(this.lifecycleHistories.values())
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  // Category Operations
+  async getCategory(id: number): Promise<Category | undefined> {
+    return this.categories.get(id);
+  }
+
+  async getCategoryByName(name: string): Promise<Category | undefined> {
+    return Array.from(this.categories.values()).find(
+      (category) => category.name === name
+    );
+  }
+
+  async createCategory(categoryData: InsertCategory): Promise<Category> {
+    const id = this.categoryIdCounter++;
+    const now = new Date();
+    const category: Category = {
+      id,
+      ...categoryData,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.categories.set(id, category);
+    return category;
+  }
+
+  async listCategories(): Promise<Category[]> {
+    return Array.from(this.categories.values())
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async listActiveCategories(): Promise<Category[]> {
+    return Array.from(this.categories.values())
+      .filter(category => category.isActive)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async updateCategory(id: number, categoryData: Partial<InsertCategory>): Promise<Category | undefined> {
+    const category = this.categories.get(id);
+    if (!category) return undefined;
+    
+    const updatedCategory = {
+      ...category,
+      ...categoryData,
+      updatedAt: new Date()
+    };
+    this.categories.set(id, updatedCategory);
+    return updatedCategory;
+  }
+
+  async deleteCategory(id: number): Promise<boolean> {
+    return this.categories.delete(id);
   }
 }
 

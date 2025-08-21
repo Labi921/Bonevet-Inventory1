@@ -20,6 +20,7 @@ import AuditLogs from "@/pages/AuditLogs";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/Login";
 import CSVImport from "./components/inventory/CSVImport";
+import CategoryManagement from "@/pages/CategoryManagement";
 
 function Router() {
   return (
@@ -64,6 +65,12 @@ function Router() {
       <Route path="/inventory/import">
         <Layout>
           <CSVImport />
+        </Layout>
+      </Route>
+
+      <Route path="/inventory/categories">
+        <Layout>
+          <CategoryManagement />
         </Layout>
       </Route>
       

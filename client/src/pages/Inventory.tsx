@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
-import { PlusCircle, Download, Search, Filter, ListFilter, Upload } from 'lucide-react';
-import { itemCategoryEnum } from '@shared/schema';
+import { PlusCircle, Download, Search, Filter, ListFilter, Upload, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -18,11 +17,23 @@ import EditItemForm from '@/components/inventory/EditItemForm';
 import ItemDetails from '@/components/inventory/ItemDetails';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+interface Category {
+  id: number;
+  name: string;
+  description: string;
+  isActive: boolean;
+}
+
 export default function Inventory() {
   const [location] = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  // Fetch active categories
+  const { data: categories } = useQuery<Category[]>({
+    queryKey: ['/api/categories/active'],
+  });
   
   // Check if we're on a sub-route
   const isAddItem = location === '/inventory/add';
@@ -117,6 +128,11 @@ export default function Inventory() {
           <Button variant="outline" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" /> Export
           </Button>
+          <Button variant="outline" asChild>
+            <a href="/inventory/categories">
+              <Settings className="h-4 w-4 mr-2" /> Manage Categories
+            </a>
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
@@ -128,9 +144,9 @@ export default function Inventory() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                {itemCategoryEnum.options.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
+                {categories && categories.map((category) => (
+                  <SelectItem key={category.id} value={category.name}>
+                    {category.name}
                   </SelectItem>
                 ))}
               </SelectContent>

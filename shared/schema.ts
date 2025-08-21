@@ -267,3 +267,19 @@ export type LifecycleHistory = typeof lifecycleHistory.$inferSelect;
 export type InsertLifecycleHistory = z.infer<typeof insertLifecycleHistorySchema>;
 
 export type InsertBorrowingRequest = z.infer<typeof insertBorrowingRequestSchema>;
+
+// Categories Management
+export const categories = pgTable("categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertCategorySchema = createInsertSchema(categories)
+  .omit({ id: true, createdAt: true, updatedAt: true });
+
+export type Category = typeof categories.$inferSelect;
+export type InsertCategory = z.infer<typeof insertCategorySchema>;

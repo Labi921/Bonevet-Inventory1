@@ -1,4 +1,4 @@
-import { CATEGORY_DESCRIPTIONS, itemCategoryEnum } from "@shared/schema";
+import { useQuery } from "@tanstack/react-query";
 import {
   FormControl,
   FormItem,
@@ -18,7 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Info } from "lucide-react";
+import { Info, Loader2 } from "lucide-react";
 
 interface CategorySelectProps {
   value?: string;
@@ -27,13 +27,23 @@ interface CategorySelectProps {
   required?: boolean;
 }
 
+interface Category {
+  id: number;
+  name: string;
+  description: string;
+  isActive: boolean;
+}
+
 export function CategorySelect({ 
   value, 
   onValueChange, 
   placeholder = "Select category...",
   required = false 
 }: CategorySelectProps) {
-  const categories = itemCategoryEnum.options;
+  // Fetch active categories from API
+  const { data: categories, isLoading } = useQuery<Category[]>({
+    queryKey: ['/api/categories/active'],
+  });
 
   return (
     <FormItem>
@@ -57,20 +67,31 @@ export function CategorySelect({
           </SelectTrigger>
         </FormControl>
         <SelectContent className="max-h-[300px]">
-          {categories.map((category) => (
-            <SelectItem 
-              key={category} 
-              value={category} 
-              className="cursor-pointer py-3 px-4 hover:bg-accent focus:bg-accent"
-            >
-              <div className="flex flex-col items-start gap-1 w-full">
-                <span className="font-medium">{category}</span>
-                <span className="text-xs text-muted-foreground">
-                  {CATEGORY_DESCRIPTIONS[category]}
-                </span>
-              </div>
-            </SelectItem>
-          ))}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="ml-2 text-sm text-muted-foreground">Loading categories...</span>
+            </div>
+          ) : categories && categories.length > 0 ? (
+            categories.map((category) => (
+              <SelectItem 
+                key={category.id} 
+                value={category.name} 
+                className="cursor-pointer py-3 px-4 hover:bg-accent focus:bg-accent"
+              >
+                <div className="flex flex-col items-start gap-1 w-full">
+                  <span className="font-medium">{category.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {category.description}
+                  </span>
+                </div>
+              </SelectItem>
+            ))
+          ) : (
+            <div className="flex items-center justify-center py-4">
+              <span className="text-sm text-muted-foreground">No categories available</span>
+            </div>
+          )}
         </SelectContent>
       </Select>
       <FormMessage />

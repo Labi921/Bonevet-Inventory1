@@ -11,7 +11,8 @@ import {
   insertLoanSchema,
   insertLoanGroupSchema,
   insertDocumentSchema,
-  insertActivityLogSchema
+  insertActivityLogSchema,
+  insertCategorySchema
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -1311,6 +1312,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(logs);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch recent activity logs" });
+    }
+  });
+
+  // Category Management Routes
+  app.get("/api/categories", requireAuth, async (req, res) => {
+    try {
+      const categories = await storage.listCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      res.status(500).json({ message: "Failed to fetch categories" });
+    }
+  });
+
+  app.get("/api/categories/active", requireAuth, async (req, res) => {
+    try {
+      const categories = await storage.listActiveCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching active categories:", error);
+      res.status(500).json({ message: "Failed to fetch active categories" });
+    }
+  });
+
+  app.post("/api/categories", requireAuth, async (req, res) => {
+    try {
+      const categoryData = insertCategorySchema.parse(req.body);
+      
+      // Check if category already exists
+      const existingCategory = await storage.getCategoryByName(categoryData.name);
+      if (existingCategory) {
+        return res.status(400).json({ message: "Category with this name already exists" });
+      }
+      
+      const category = await storage.createCategory(categoryData);
+      res.status(201).json(category);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      console.error("Error creating category:", error);
+      res.status(500).json({ message: "Failed to create category" });
+    }
+  });
+
+  app.put("/api/categories/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const categoryData = insertCategorySchema.parse(req.body);
+      
+      // Check if another category with this name exists (excluding current one)
+      const existingCategory = await storage.getCategoryByName(categoryData.name);
+      if (existingCategory && existingCategory.id !== id) {
+        return res.status(400).json({ message: "Category with this name already exists" });
+      }
+      
+      const category = await storage.updateCategory(id, categoryData);
+      if (!category) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      res.json(category);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      console.error("Error updating category:", error);
+      res.status(500).json({ message: "Failed to update category" });
+    }
+  });
+
+  app.delete("/api/categories/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteCategory(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      res.json({ message: "Category deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      res.status(500).json({ message: "Failed to delete category" });
     }
   });
 
