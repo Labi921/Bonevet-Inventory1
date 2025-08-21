@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
-import { PlusCircle, Download, Search, Filter, ListFilter } from 'lucide-react';
+import { PlusCircle, Download, Search, Filter, ListFilter, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -106,6 +106,11 @@ export default function Inventory() {
           <Button asChild>
             <a href="/inventory/add">
               <PlusCircle className="h-4 w-4 mr-2" /> Add Item
+            </a>
+          </Button>
+          <Button variant="outline" asChild>
+            <a href="/inventory/import">
+              <Upload className="h-4 w-4 mr-2" /> Import CSV
             </a>
           </Button>
           <Button variant="outline" onClick={handleExport}>

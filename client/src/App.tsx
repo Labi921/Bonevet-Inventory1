@@ -19,6 +19,7 @@ import Settings from "@/pages/Settings";
 import AuditLogs from "@/pages/AuditLogs";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/Login";
+import CSVImport from "./components/inventory/CSVImport";
 
 function Router() {
   return (
@@ -58,6 +59,12 @@ function Router() {
             <Inventory />
           </Layout>
         )}
+      </Route>
+
+      <Route path="/inventory/import">
+        <Layout>
+          <CSVImport />
+        </Layout>
       </Route>
       
       {/* Loan routes */}

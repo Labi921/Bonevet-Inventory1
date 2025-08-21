@@ -286,6 +286,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CSV Import endpoint
+  app.post("/api/inventory/import", requireAuth, async (req, res) => {
+    try {
+      const { items } = req.body;
+      
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "No items provided for import" });
+      }
+
+      let created = 0;
+      let updated = 0;
+      const errors: string[] = [];
+
+      for (const item of items) {
+        try {
+          // Check if item exists by itemId or name
+          const existingItems = await storage.listInventoryItems();
+          let existingItem = null;
+          
+          if (item.itemId) {
+            existingItem = existingItems.find(inv => inv.itemId === item.itemId);
+          }
+          
+          if (!existingItem && item.name) {
+            existingItem = existingItems.find(inv => inv.name.toLowerCase() === item.name.toLowerCase());
+          }
+
+          if (existingItem) {
+            // Update existing item
+            const updateData = {
+              ...item,
+              id: existingItem.id,
+              itemId: existingItem.itemId, // Keep original itemId
+              quantityAvailable: item.quantity || existingItem.quantityAvailable
+            };
+            
+            await storage.updateInventoryItem(existingItem.id, updateData);
+            updated++;
+            
+            // Log the activity
+            await storage.createActivityLog({
+              userId: (req.user as any).id,
+              action: "Update",
+              entityType: "InventoryItem",
+              entityId: existingItem.id.toString(),
+              details: `Updated item via CSV import: ${item.name}`
+            });
+          } else {
+            // Create new item
+            // Generate itemId if not provided
+            if (!item.itemId) {
+              const lastId = existingItems.length > 0 
+                ? Math.max(...existingItems.map(inv => parseInt(inv.itemId.replace("BVGJK", "")) || 0))
+                : 0;
+              item.itemId = `BVGJK${String(lastId + 1).padStart(4, "0")}`;
+            }
+            
+            const newItem = await storage.createInventoryItem({
+              ...item,
+              quantity: item.quantity || 1,
+              quantityAvailable: item.quantity || 1,
+              quantityLoaned: 0,
+              quantityDamaged: 0,
+              status: item.status || "Available",
+              usage: item.usage || "None"
+            });
+            
+            created++;
+            
+            // Log the activity
+            await storage.createActivityLog({
+              userId: (req.user as any).id,
+              action: "Create",
+              entityType: "InventoryItem",
+              entityId: newItem.id.toString(),
+              details: `Created item via CSV import: ${item.name} (${item.itemId})`
+            });
+          }
+        } catch (itemError) {
+          console.error(`Error processing item ${item.name}:`, itemError);
+          errors.push(`Failed to process "${item.name}": ${itemError instanceof Error ? itemError.message : 'Unknown error'}`);
+        }
+      }
+
+      // Log the bulk import activity
+      await storage.createActivityLog({
+        userId: (req.user as any).id,
+        action: "Import",
+        entityType: "InventoryItem",
+        entityId: "bulk",
+        details: `CSV Import completed: ${created} created, ${updated} updated, ${errors.length} errors`
+      });
+
+      res.json({
+        imported: created + updated,
+        created,
+        updated,
+        errors: errors.length,
+        errorDetails: errors
+      });
+    } catch (error) {
+      console.error('Error during CSV import:', error);
+      res.status(500).json({ message: "Failed to import inventory items" });
+    }
+  });
+
   app.get("/api/inventory/:id", requireAuth, async (req, res) => {
     try {
       const item = await storage.getInventoryItem(parseInt(req.params.id));
