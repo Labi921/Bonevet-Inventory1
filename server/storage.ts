@@ -691,13 +691,36 @@ export class MemStorage implements IStorage {
     return log;
   }
 
-  async listActivityLogs(): Promise<ActivityLog[]> {
-    return Array.from(this.activityLogs.values());
+  async listActivityLogs(): Promise<any[]> {
+    const allLogs = Array.from(this.activityLogs.values());
+    const enrichedLogs = [];
+    
+    for (const log of allLogs) {
+      const user = this.users.get(log.userId);
+      enrichedLogs.push({
+        ...log,
+        userName: user ? user.name : `User ${log.userId}`,
+        userRole: user ? user.role : 'Unknown'
+      });
+    }
+    
+    return enrichedLogs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   }
 
-  async getRecentActivityLogs(limit: number): Promise<ActivityLog[]> {
+  async getRecentActivityLogs(limit: number): Promise<any[]> {
     const allLogs = Array.from(this.activityLogs.values());
-    return allLogs
+    const enrichedLogs = [];
+    
+    for (const log of allLogs) {
+      const user = this.users.get(log.userId);
+      enrichedLogs.push({
+        ...log,
+        userName: user ? user.name : `User ${log.userId}`,
+        userRole: user ? user.role : 'Unknown'
+      });
+    }
+    
+    return enrichedLogs
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       .slice(0, limit);
   }

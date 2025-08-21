@@ -51,7 +51,9 @@ export default function AuditLogs() {
     const matchesSearch = 
       log.details?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.entityId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.action.toLowerCase().includes(searchTerm.toLowerCase());
+      log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.userRole?.toLowerCase().includes(searchTerm.toLowerCase());
     
     // Action filter
     const matchesAction = actionFilter === 'all' || log.action === actionFilter;
@@ -182,7 +184,12 @@ export default function AuditLogs() {
                     <TableCell className="whitespace-nowrap">
                       {format(new Date(log.timestamp), 'MMM dd, yyyy HH:mm')}
                     </TableCell>
-                    <TableCell>{log.userId}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{log.userName}</span>
+                        <span className="text-xs text-gray-500 capitalize">{log.userRole}</span>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getActionClass(log.action)}`}>
                         {log.action}
