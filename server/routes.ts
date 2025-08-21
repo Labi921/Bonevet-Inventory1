@@ -302,6 +302,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (const item of items) {
         try {
+          // Debug log the incoming item data
+          console.log('Processing CSV item:', JSON.stringify(item, null, 2));
           // Check if item exists by itemId or name
           const existingItems = await storage.listInventoryItems();
           let existingItem = null;
@@ -316,11 +318,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           if (existingItem) {
             // Update existing item
+            // Ensure quantity is properly converted to number
+            const quantity = typeof item.quantity === 'string' ? parseInt(item.quantity) : item.quantity;
+            const finalQuantity = quantity && quantity > 0 ? quantity : existingItem.quantity;
+            
             const updateData = {
               ...item,
               id: existingItem.id,
               itemId: existingItem.itemId, // Keep original itemId
-              quantityAvailable: item.quantity || existingItem.quantityAvailable
+              quantity: finalQuantity,
+              quantityAvailable: finalQuantity
             };
             
             await storage.updateInventoryItem(existingItem.id, updateData);
@@ -344,10 +351,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               item.itemId = `BVGJK${String(lastId + 1).padStart(4, "0")}`;
             }
             
+            // Ensure quantity is properly converted to number
+            const quantity = typeof item.quantity === 'string' ? parseInt(item.quantity) : item.quantity;
+            const finalQuantity = quantity && quantity > 0 ? quantity : 1;
+            
             const newItem = await storage.createInventoryItem({
               ...item,
-              quantity: item.quantity || 1,
-              quantityAvailable: item.quantity || 1,
+              quantity: finalQuantity,
+              quantityAvailable: finalQuantity,
               quantityLoaned: 0,
               quantityDamaged: 0,
               status: item.status || "Available",
