@@ -124,7 +124,7 @@ export class MemStorage implements IStorage {
       itemId: "BVGJK0001",
       name: "Prusa i3 MK3S+",
       model: "MK3S+",
-      category: "Equipment",
+      category: "Fabrication Equipment",
       status: "Available",
       location: "Main Workshop",
       quantity: 1,

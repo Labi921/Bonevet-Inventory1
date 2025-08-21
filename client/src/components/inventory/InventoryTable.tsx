@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/pagination';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import { Package } from 'lucide-react';
 import LifecycleManagement from './LifecycleManagement';
 
 interface InventoryTableProps {
@@ -138,8 +139,29 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.itemId}</TableCell>
                   <TableCell>
-                    <div className="font-medium text-gray-900">{item.name}</div>
-                    {item.model && <div className="text-gray-500 text-sm">{item.model}</div>}
+                    <div className="flex items-center space-x-3">
+                      <div className="flex-shrink-0">
+                        {item.imagePath ? (
+                          <img 
+                            src={item.imagePath} 
+                            alt={item.name}
+                            className="h-10 w-10 rounded-md object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-md bg-gray-200 flex items-center justify-center">
+                            <Package className="h-5 w-5 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900">{item.name}</div>
+                        {item.model && <div className="text-gray-500 text-sm">{item.model}</div>}
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell>{item.category}</TableCell>
                   <TableCell>

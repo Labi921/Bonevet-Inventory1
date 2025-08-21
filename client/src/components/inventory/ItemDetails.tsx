@@ -42,9 +42,10 @@ export default function ItemDetails({ id }: ItemDetailsProps) {
     quantityAvailable: number;
     quantityLoaned: number;
     quantityDamaged: number;
-    price?: number;
+    unitPrice?: number;
     usage: string;
     notes?: string;
+    imagePath?: string;
     createdAt: string;
     updatedAt?: string;
   }
@@ -177,11 +178,29 @@ export default function ItemDetails({ id }: ItemDetailsProps) {
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row md:space-x-6">
             <div className="md:w-1/3 space-y-4">
-              <div className="aspect-square bg-gray-100 rounded-md flex items-center justify-center">
-                <div className="h-24 w-24 rounded-md bg-primary-100 flex items-center justify-center text-primary-800">
-                  {/* Use Package icon for all categories */}
-                  <Package className="h-16 w-16" />
-                </div>
+              <div className="aspect-square bg-gray-100 rounded-md flex items-center justify-center overflow-hidden">
+                {item.imagePath ? (
+                  <img 
+                    src={item.imagePath} 
+                    alt={item.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.parentElement!.innerHTML = `
+                        <div class="h-24 w-24 rounded-md bg-primary-100 flex items-center justify-center text-primary-800">
+                          <svg class="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                          </svg>
+                        </div>
+                      `;
+                    }}
+                  />
+                ) : (
+                  <div className="h-24 w-24 rounded-md bg-primary-100 flex items-center justify-center text-primary-800">
+                    <Package className="h-16 w-16" />
+                  </div>
+                )}
               </div>
               
               <div className="space-y-4">
