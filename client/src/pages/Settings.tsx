@@ -1,4 +1,4 @@
-import { useRequireAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
 import { 
   Card, 
@@ -78,9 +78,21 @@ function ThemeSelector() {
 }
 
 export default function Settings() {
-  const { user } = useRequireAuth('admin'); // Require admin role
+  const { user } = useAuth(); // Use general auth hook instead of role-specific
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('general');
+  
+  // Check if user has permission to access settings (Admin or Super Admin only)
+  if (!user || !['admin', 'super_admin'].includes(user.role)) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Access Denied</h2>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">You don't have permission to access this page.</p>
+        </div>
+      </div>
+    );
+  }
   
   // General settings form
   const generalForm = useForm<z.infer<typeof generalSettingsSchema>>({
