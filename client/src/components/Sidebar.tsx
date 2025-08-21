@@ -44,14 +44,33 @@ export default function Sidebar() {
     return false;
   };
   
-  const navItems = [
-    { path: '/', label: 'Dashboard', icon: <Gauge className="w-5 h-5 mr-2" /> },
-    { path: '/inventory', label: 'Inventory', icon: <Package className="w-5 h-5 mr-2" /> },
-    { path: '/loans', label: 'Loans', icon: <Handshake className="w-5 h-5 mr-2" /> },
-    { path: '/documents', label: 'Documents', icon: <FileText className="w-5 h-5 mr-2" /> },
-    { path: '/reports', label: 'Reports', icon: <BarChart className="w-5 h-5 mr-2" /> },
-    { path: '/barcode', label: 'Barcode', icon: <QrCode className="w-5 h-5 mr-2" /> },
-  ];
+  // Navigation items based on user role
+  const getNavItems = () => {
+    // Staff users only get resources access
+    if (user?.role === 'staff_user') {
+      return [];
+    }
+    
+    // Standard users get limited access
+    if (user?.role === 'standard_user') {
+      return [
+        { path: '/', label: 'Dashboard', icon: <Gauge className="w-5 h-5 mr-2" /> },
+        { path: '/inventory', label: 'Inventory', icon: <Package className="w-5 h-5 mr-2" /> },
+      ];
+    }
+    
+    // Admin and Super Admin get full access
+    return [
+      { path: '/', label: 'Dashboard', icon: <Gauge className="w-5 h-5 mr-2" /> },
+      { path: '/inventory', label: 'Inventory', icon: <Package className="w-5 h-5 mr-2" /> },
+      { path: '/loans', label: 'Loans', icon: <Handshake className="w-5 h-5 mr-2" /> },
+      { path: '/documents', label: 'Documents', icon: <FileText className="w-5 h-5 mr-2" /> },
+      { path: '/reports', label: 'Reports', icon: <BarChart className="w-5 h-5 mr-2" /> },
+      { path: '/barcode', label: 'Barcode', icon: <QrCode className="w-5 h-5 mr-2" /> },
+    ];
+  };
+  
+  const navItems = getNavItems();
   
   const adminItems = [
     { path: '/settings', label: 'Settings', icon: <Settings className="w-5 h-5 mr-2" /> },
@@ -84,31 +103,36 @@ export default function Sidebar() {
       </div>
       
       <div className={`p-4 ${isMobileMenuOpen ? 'block' : 'hidden'} md:block`}>
-        <div className="py-4">
-          <p className="text-primary-foreground/90 text-xs uppercase font-bold">Main Menu</p>
-          <nav className="mt-2">
-            {navItems.map((item) => (
-              <Link 
-                key={item.path} 
-                href={item.path}
-                className={`block py-2.5 px-4 rounded transition duration-200 
-                  ${isActive(item.path) 
-                    ? 'bg-primary-foreground/20 text-primary-foreground' 
-                    : 'hover:bg-primary-foreground/10 text-primary-foreground/80'}`}
-              >
-                <div className="flex items-center">
-                  {item.icon}
-                  {item.label}
-                </div>
-              </Link>
-            ))}
-          </nav>
-        </div>
+        {/* Main menu only for non-staff users */}
+        {user?.role !== 'staff_user' && navItems.length > 0 && (
+          <div className="py-4">
+            <p className="text-primary-foreground/90 text-xs uppercase font-bold">Main Menu</p>
+            <nav className="mt-2">
+              {navItems.map((item) => (
+                <Link 
+                  key={item.path} 
+                  href={item.path}
+                  className={`block py-2.5 px-4 rounded transition duration-200 
+                    ${isActive(item.path) 
+                      ? 'bg-primary-foreground/20 text-primary-foreground' 
+                      : 'hover:bg-primary-foreground/10 text-primary-foreground/80'}`}
+                >
+                  <div className="flex items-center">
+                    {item.icon}
+                    {item.label}
+                  </div>
+                </Link>
+              ))}
+            </nav>
+          </div>
+        )}
         
         {/* Resources for Staff and above */}
         {(user?.role === 'staff_user' || user?.role === 'admin' || user?.role === 'super_admin') && (
-          <div className="py-4 border-t border-primary-foreground/20">
-            <p className="text-primary-foreground/90 text-xs uppercase font-bold">Staff</p>
+          <div className={`py-4 ${user?.role !== 'staff_user' ? 'border-t border-primary-foreground/20' : ''}`}>
+            <p className="text-primary-foreground/90 text-xs uppercase font-bold">
+              {user?.role === 'staff_user' ? 'Staff Resources' : 'Staff'}
+            </p>
             <nav className="mt-2">
               <Link 
                 href="/resources"
