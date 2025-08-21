@@ -73,11 +73,11 @@ export default function Barcode() {
         console.log(`Generating barcode for itemId: ${itemId} on canvas: ${canvasId}`);
         JsBarcode(canvas, itemId, {
           format: "CODE128",
-          width: 2,      // Increased width for better quality
-          height: 30,    // Increased height for better scanning
+          width: 1.8,    // Optimized for 64mm cell width
+          height: 20,    // Reduced to fit within 34mm height with text
           displayValue: false, // We'll handle text separately for better control
-          fontSize: 10,
-          margin: 2,     // Slightly more margin for clarity
+          fontSize: 8,
+          margin: 1,     // Minimal margin to maximize space usage
           background: "#ffffff",
           lineColor: "#000000",
           flat: true,    // Ensures sharp lines without anti-aliasing
@@ -151,26 +151,33 @@ export default function Barcode() {
               flex-direction: column;
               align-items: center;
               justify-content: center;
-              padding: 1mm;
+              padding: 2mm;
               box-sizing: border-box;
               overflow: hidden;
+              border: 1px solid #f0f0f0;
               ${item ? '' : 'visibility: hidden;'}
             ">
               ${item ? `
-                <canvas id="barcode-${startIndex + cellIndex}" style="margin-bottom: 2px; image-rendering: crisp-edges;"></canvas>
+                <canvas id="barcode-${startIndex + cellIndex}" style="
+                  max-width: 60mm; 
+                  max-height: 20mm; 
+                  margin-bottom: 1mm; 
+                  image-rendering: crisp-edges;
+                "></canvas>
                 <div style="
-                  font-size: 8px !important; 
+                  font-size: 7px !important; 
                   font-weight: bold !important; 
                   text-align: center !important;
-                  line-height: 1.1 !important;
-                  max-width: 58mm !important;
+                  line-height: 1.0 !important;
+                  max-width: 60mm !important;
                   color: #000000 !important;
                   font-family: 'Arial', sans-serif !important;
                   -webkit-font-smoothing: antialiased !important;
+                  overflow: hidden !important;
                 ">
-                  <div style="margin-bottom: 1px !important; word-wrap: break-word !important; overflow-wrap: break-word !important; color: #000000 !important;">${item.name}</div>
-                  ${item.model ? `<div style="font-size: 7px !important; color: #333333 !important; word-wrap: break-word !important; overflow-wrap: break-word !important;">${item.model}</div>` : ''}
-                  <div style="font-size: 6px !important; color: #666666 !important; margin-top: 1px !important;">${item.itemId}</div>
+                  <div style="margin-bottom: 0.5mm !important; word-wrap: break-word !important; overflow-wrap: break-word !important; color: #000000 !important; font-size: 7px !important;">${item.name.length > 20 ? item.name.substring(0, 20) + '...' : item.name}</div>
+                  ${item.model ? `<div style="font-size: 6px !important; color: #333333 !important; word-wrap: break-word !important; overflow-wrap: break-word !important;">${item.model.length > 15 ? item.model.substring(0, 15) + '...' : item.model}</div>` : ''}
+                  <div style="font-size: 5px !important; color: #666666 !important; margin-top: 0.5mm !important;">${item.itemId}</div>
                 </div>
               ` : ''}
             </div>
@@ -207,7 +214,7 @@ export default function Barcode() {
           }
           
           const canvas = await html2canvas(element as HTMLElement, {
-            scale: 3, // Higher scale for better quality
+            scale: 2, // Optimized scale for proper sizing
             useCORS: true,
             allowTaint: true,
             backgroundColor: '#ffffff',
@@ -215,6 +222,8 @@ export default function Barcode() {
             removeContainer: true,
             imageTimeout: 15000,
             pixelRatio: window.devicePixelRatio || 1, // Use device pixel ratio for crisp rendering
+            width: 794, // A4 width in pixels at 96 DPI (210mm)
+            height: 1123, // A4 height in pixels at 96 DPI (297mm)
             onclone: (clonedDoc) => {
               // Ensure all fonts and text are properly rendered
               const clonedElement = clonedDoc.querySelector('[id^="barcode-sheet-"]') as HTMLElement;
@@ -564,7 +573,7 @@ export default function Barcode() {
                                     className="mb-1"
                                     style={{ 
                                       maxWidth: '120px', 
-                                      height: '30px',
+                                      height: '20px',
                                       imageRendering: 'crisp-edges'
                                     }}
                                   />
