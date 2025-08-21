@@ -10,6 +10,7 @@ import {
   BarChart,
   QrCode,
   Users,
+  BookOpen,
   Settings,
   History,
   LogOut,
@@ -53,7 +54,6 @@ export default function Sidebar() {
   ];
   
   const adminItems = [
-    { path: '/users', label: 'Users', icon: <Users className="w-5 h-5 mr-2" /> },
     { path: '/settings', label: 'Settings', icon: <Settings className="w-5 h-5 mr-2" /> },
     { path: '/audit-logs', label: 'Audit Logs', icon: <History className="w-5 h-5 mr-2" /> },
   ];
@@ -105,7 +105,29 @@ export default function Sidebar() {
           </nav>
         </div>
         
-        {user?.role === 'admin' && (
+        {/* Resources for Staff and above */}
+        {(user?.role === 'staff_user' || user?.role === 'admin' || user?.role === 'super_admin') && (
+          <div className="py-4 border-t border-primary-foreground/20">
+            <p className="text-primary-foreground/90 text-xs uppercase font-bold">Staff</p>
+            <nav className="mt-2">
+              <Link 
+                href="/resources"
+                className={`block py-2.5 px-4 rounded transition duration-200 
+                  ${isActive('/resources') 
+                    ? 'bg-primary-foreground/20 text-primary-foreground' 
+                    : 'hover:bg-primary-foreground/10 text-primary-foreground/80'}`}
+              >
+                <div className="flex items-center">
+                  <BookOpen className="w-5 h-5 mr-2" />
+                  Resources
+                </div>
+              </Link>
+            </nav>
+          </div>
+        )}
+
+        {/* Admin and Super Admin only */}
+        {(user?.role === 'admin' || user?.role === 'super_admin') && (
           <div className="py-4 border-t border-primary-foreground/20">
             <p className="text-primary-foreground/90 text-xs uppercase font-bold">Admin</p>
             <nav className="mt-2">
@@ -127,6 +149,27 @@ export default function Sidebar() {
             </nav>
           </div>
         )}
+
+        {/* Super Admin only */}
+        {user?.role === 'super_admin' && (
+          <div className="py-4 border-t border-primary-foreground/20">
+            <p className="text-primary-foreground/90 text-xs uppercase font-bold">Super Admin</p>
+            <nav className="mt-2">
+              <Link 
+                href="/users"
+                className={`block py-2.5 px-4 rounded transition duration-200 
+                  ${isActive('/users') 
+                    ? 'bg-primary-foreground/20 text-primary-foreground' 
+                    : 'hover:bg-primary-foreground/10 text-primary-foreground/80'}`}
+              >
+                <div className="flex items-center">
+                  <Users className="w-5 h-5 mr-2" />
+                  Users
+                </div>
+              </Link>
+            </nav>
+          </div>
+        )}
       </div>
       
       <div className={`mt-auto p-4 border-t border-primary-foreground/20 ${isMobileMenuOpen ? 'block' : 'hidden'} md:block`}>
@@ -136,7 +179,12 @@ export default function Sidebar() {
           </div>
           <div className="ml-3">
             <p className="text-sm font-medium text-primary-foreground">{user?.name || 'User'}</p>
-            <p className="text-xs text-primary-foreground/70">{user?.role === 'admin' ? 'Administrator' : 'User'}</p>
+            <p className="text-xs text-primary-foreground/70">
+              {user?.role === 'super_admin' ? 'Super Admin' : 
+               user?.role === 'admin' ? 'Admin' : 
+               user?.role === 'staff_user' ? 'Staff User' : 
+               user?.role === 'standard_user' ? 'Standard User' : 'User'}
+            </p>
           </div>
         </div>
         <Button 

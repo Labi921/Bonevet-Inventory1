@@ -12,7 +12,9 @@ import {
   insertLoanGroupSchema,
   insertDocumentSchema,
   insertActivityLogSchema,
-  insertCategorySchema
+  insertCategorySchema,
+  insertResourceSchema,
+  userRoleEnum
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -1416,6 +1418,157 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting category:", error);
       res.status(500).json({ message: "Failed to delete category" });
+    }
+  });
+
+  // Middleware to check if user has required role
+  const requireRole = (roles: string[]) => {
+    return (req: any, res: any, next: any) => {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const user = req.user;
+      if (!roles.includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+      
+      next();
+    };
+  };
+
+  // User Management Routes (Super Admin only)
+  app.get("/api/users", requireRole(["super_admin"]), async (req, res) => {
+    try {
+      const users = await storage.listUsers();
+      res.json(users.map(user => ({ ...user, password: undefined }))); // Remove password from response
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.post("/api/users", requireRole(["super_admin"]), async (req, res) => {
+    try {
+      const validatedData = insertUserSchema.parse(req.body);
+      const user = await storage.createUser(validatedData);
+      res.status(201).json({ ...user, password: undefined });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: fromZodError(error).toString() });
+      }
+      console.error("Error creating user:", error);
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  app.put("/api/users/:id", requireRole(["super_admin"]), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertUserSchema.partial().parse(req.body);
+      const user = await storage.updateUser(id, validatedData);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json({ ...user, password: undefined });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: fromZodError(error).toString() });
+      }
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.delete("/api/users/:id", requireRole(["super_admin"]), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteUser(id);
+      
+      if (!success) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  // Resource Management Routes (Staff users and above)
+  app.get("/api/resources", requireRole(["staff_user", "admin", "super_admin"]), async (req, res) => {
+    try {
+      const type = req.query.type as string;
+      let resources;
+      
+      if (type) {
+        resources = await storage.listResourcesByType(type);
+      } else {
+        resources = await storage.listResources();
+      }
+      
+      res.json(resources);
+    } catch (error) {
+      console.error("Error fetching resources:", error);
+      res.status(500).json({ message: "Failed to fetch resources" });
+    }
+  });
+
+  app.post("/api/resources", requireRole(["admin", "super_admin"]), async (req, res) => {
+    try {
+      const user = req.user as any;
+      const validatedData = insertResourceSchema.parse({
+        ...req.body,
+        uploadedBy: user.id
+      });
+      
+      const resource = await storage.createResource(validatedData);
+      res.status(201).json(resource);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: fromZodError(error).toString() });
+      }
+      console.error("Error creating resource:", error);
+      res.status(500).json({ message: "Failed to create resource" });
+    }
+  });
+
+  app.put("/api/resources/:id", requireRole(["admin", "super_admin"]), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertResourceSchema.partial().parse(req.body);
+      const resource = await storage.updateResource(id, validatedData);
+      
+      if (!resource) {
+        return res.status(404).json({ message: "Resource not found" });
+      }
+      
+      res.json(resource);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: fromZodError(error).toString() });
+      }
+      console.error("Error updating resource:", error);
+      res.status(500).json({ message: "Failed to update resource" });
+    }
+  });
+
+  app.delete("/api/resources/:id", requireRole(["admin", "super_admin"]), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteResource(id);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Resource not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting resource:", error);
+      res.status(500).json({ message: "Failed to delete resource" });
     }
   });
 

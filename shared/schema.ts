@@ -2,6 +2,14 @@ import { pgTable, text, serial, integer, boolean, timestamp, real, date } from "
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// User roles enum
+export const userRoleEnum = z.enum([
+  "super_admin",
+  "admin", 
+  "standard_user",
+  "staff_user"
+]);
+
 // User Model
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -9,8 +17,11 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  role: text("role").notNull().default("user"),
+  role: text("role").notNull().default("standard_user"),
   active: boolean("active").notNull().default(true),
+  permissions: text("permissions").array(), // Additional granular permissions if needed
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -20,7 +31,35 @@ export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   role: true,
   active: true,
+  permissions: true,
+}).extend({
+  role: userRoleEnum,
 });
+
+// Resources table for manuals, videos, and documents
+export const resources = pgTable("resources", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  type: text("type").notNull(), // "manual", "video", "document", "rules"
+  fileUrl: text("file_url"), // For PDF files
+  videoUrl: text("video_url"), // For YouTube links
+  category: text("category"), // Equipment category or general
+  tags: text("tags").array(), // Search tags
+  uploadedBy: integer("uploaded_by").notNull().references(() => users.id),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertResourceSchema = createInsertSchema(resources)
+  .omit({ id: true, createdAt: true, updatedAt: true })
+  .extend({
+    type: z.enum(["manual", "video", "document", "rules"]),
+  });
+
+export type Resource = typeof resources.$inferSelect;
+export type InsertResource = z.infer<typeof insertResourceSchema>;
 
 // Item Category Enum - Updated with new categories
 export const itemCategoryEnum = z.enum([

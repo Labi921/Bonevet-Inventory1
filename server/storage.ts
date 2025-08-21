@@ -6,7 +6,8 @@ import {
   documents, Document, InsertDocument,
   activityLogs, ActivityLog, InsertActivityLog,
   lifecycleHistory, LifecycleHistory, InsertLifecycleHistory,
-  categories, Category, InsertCategory
+  categories, Category, InsertCategory,
+  resources, Resource, InsertResource
 } from "@shared/schema";
 
 // Storage Interface
@@ -84,6 +85,14 @@ export interface IStorage {
   updateCategory(id: number, categoryData: Partial<InsertCategory>): Promise<Category | undefined>;
   deleteCategory(id: number): Promise<boolean>;
   reorderCategories(categoryIds: number[]): Promise<Category[]>;
+
+  // Resource Operations
+  getResource(id: number): Promise<Resource | undefined>;
+  createResource(resource: InsertResource): Promise<Resource>;
+  listResources(): Promise<Resource[]>;
+  listResourcesByType(type: string): Promise<Resource[]>;
+  updateResource(id: number, resourceData: Partial<InsertResource>): Promise<Resource | undefined>;
+  deleteResource(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -95,6 +104,7 @@ export class MemStorage implements IStorage {
   private activityLogs: Map<number, ActivityLog>;
   private lifecycleHistories: Map<number, LifecycleHistory>;
   private categories: Map<number, Category>;
+  private resources: Map<number, Resource>;
   
   private userIdCounter: number;
   private inventoryIdCounter: number;
@@ -104,6 +114,7 @@ export class MemStorage implements IStorage {
   private activityLogIdCounter: number;
   private lifecycleHistoryIdCounter: number;
   private categoryIdCounter: number;
+  private resourceIdCounter: number;
 
   constructor() {
     this.users = new Map();
@@ -114,6 +125,7 @@ export class MemStorage implements IStorage {
     this.activityLogs = new Map();
     this.lifecycleHistories = new Map();
     this.categories = new Map();
+    this.resources = new Map();
     
     this.userIdCounter = 1;
     this.inventoryIdCounter = 1;
@@ -123,6 +135,7 @@ export class MemStorage implements IStorage {
     this.activityLogIdCounter = 1;
     this.lifecycleHistoryIdCounter = 1;
     this.categoryIdCounter = 1;
+    this.resourceIdCounter = 1;
     
     // Add default admin user
     this.createUser({
@@ -130,8 +143,58 @@ export class MemStorage implements IStorage {
       password: "admin123", // In a real app, this would be hashed
       name: "Admin User",
       email: "admin@bonevet.org",
-      role: "admin",
+      role: "super_admin",
       active: true
+    });
+
+    // Add sample staff user
+    this.createUser({
+      username: "staff",
+      password: "staff123",
+      name: "Staff User",
+      email: "staff@bonevet.org",
+      role: "staff_user",
+      active: true
+    });
+
+    // Add sample resources
+    this.createResource({
+      title: "Prusa i3 MK3S+ User Manual",
+      description: "Complete user manual for operating and maintaining the Prusa i3 MK3S+ 3D printer",
+      type: "manual",
+      fileUrl: "https://cdn.prusa3d.com/downloads/manual/prusa3d_manual_mk3s_en.pdf",
+      category: "3D Printers",
+      uploadedBy: 1,
+      isActive: true
+    });
+
+    this.createResource({
+      title: "Arduino Programming Tutorial",
+      description: "Learn the basics of Arduino programming and electronics prototyping",
+      type: "video",
+      videoUrl: "https://www.youtube.com/watch?v=nL34zDTPkcs",
+      category: "Electronics",
+      uploadedBy: 1,
+      isActive: true
+    });
+
+    this.createResource({
+      title: "BONEVET Makerspace Rules",
+      description: "Official rules and regulations for using the BONEVET makerspace facilities",
+      type: "rules",
+      fileUrl: "https://example.com/bonevet-rules.pdf",
+      uploadedBy: 1,
+      isActive: true
+    });
+
+    this.createResource({
+      title: "Soldering Iron Safety Guide", 
+      description: "Essential safety procedures for using soldering equipment",
+      type: "document",
+      fileUrl: "https://example.com/soldering-safety.pdf",
+      category: "Electronics",
+      uploadedBy: 1,
+      isActive: true
     });
     
     // Add some sample inventory items for testing
@@ -861,6 +924,54 @@ export class MemStorage implements IStorage {
 
   async deleteCategory(id: number): Promise<boolean> {
     return this.categories.delete(id);
+  }
+
+  // Resource Operations
+  async getResource(id: number): Promise<Resource | undefined> {
+    return this.resources.get(id);
+  }
+
+  async createResource(resourceData: InsertResource): Promise<Resource> {
+    const id = this.resourceIdCounter++;
+    const now = new Date();
+    
+    const resource: Resource = {
+      id,
+      ...resourceData,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.resources.set(id, resource);
+    return resource;
+  }
+
+  async listResources(): Promise<Resource[]> {
+    return Array.from(this.resources.values())
+      .filter(resource => resource.isActive)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async listResourcesByType(type: string): Promise<Resource[]> {
+    return Array.from(this.resources.values())
+      .filter(resource => resource.isActive && resource.type === type)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async updateResource(id: number, resourceData: Partial<InsertResource>): Promise<Resource | undefined> {
+    const resource = this.resources.get(id);
+    if (!resource) return undefined;
+    
+    const updatedResource = {
+      ...resource,
+      ...resourceData,
+      updatedAt: new Date()
+    };
+    this.resources.set(id, updatedResource);
+    return updatedResource;
+  }
+
+  async deleteResource(id: number): Promise<boolean> {
+    return this.resources.delete(id);
   }
 }
 

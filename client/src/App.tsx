@@ -15,6 +15,7 @@ import Reports from "@/pages/Reports";
 import Barcode from "@/pages/Barcode";
 import BorrowingRequest from "@/pages/BorrowingRequest";
 import Users from "@/pages/Users";
+import Resources from "@/pages/Resources";
 import Settings from "@/pages/Settings";
 import AuditLogs from "@/pages/AuditLogs";
 import NotFound from "@/pages/not-found";
@@ -160,6 +161,13 @@ function Router() {
             <Users />
           </Layout>
         )}
+      </Route>
+      
+      {/* Resources route */}
+      <Route path="/resources">
+        <Layout>
+          <Resources />
+        </Layout>
       </Route>
       
       <Route path="/settings">
