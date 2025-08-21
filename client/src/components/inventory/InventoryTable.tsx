@@ -83,6 +83,7 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
           <TableHeader className="bg-gray-50">
             <TableRow>
               <TableHead className="w-[100px]">ID</TableHead>
+              <TableHead className="w-[60px]">Image</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Status</TableHead>
@@ -100,6 +101,9 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
                 <TableRow key={index}>
                   <TableCell>
                     <div className="w-16 h-5 bg-gray-200 animate-pulse rounded"></div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="w-10 h-10 bg-gray-200 animate-pulse rounded"></div>
                   </TableCell>
                   <TableCell>
                     <div className="w-32 h-5 bg-gray-200 animate-pulse rounded"></div>
@@ -138,30 +142,28 @@ export default function InventoryTable({ items, isLoading }: InventoryTableProps
               paginatedItems.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.itemId}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-3">
-                      <div className="flex-shrink-0">
-                        {item.imagePath ? (
-                          <img 
-                            src={item.imagePath} 
-                            alt={item.name}
-                            className="h-10 w-10 rounded-md object-cover"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                            }}
-                          />
-                        ) : (
-                          <div className="h-10 w-10 rounded-md bg-gray-200 flex items-center justify-center">
-                            <Package className="h-5 w-5 text-gray-400" />
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900">{item.name}</div>
-                        {item.model && <div className="text-gray-500 text-sm">{item.model}</div>}
-                      </div>
+                  <TableCell className="w-[60px]">
+                    <div className="flex-shrink-0">
+                      {item.imagePath ? (
+                        <img 
+                          src={item.imagePath} 
+                          alt={item.name}
+                          className="h-10 w-10 rounded-md object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-md bg-gray-200 flex items-center justify-center">
+                          <Package className="h-5 w-5 text-gray-400" />
+                        </div>
+                      )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="font-medium text-gray-900">{item.name}</div>
+                    {item.model && <div className="text-gray-500 text-sm">{item.model}</div>}
                   </TableCell>
                   <TableCell>{item.category}</TableCell>
                   <TableCell>
