@@ -56,20 +56,20 @@ export function CategorySelect({
             <SelectValue placeholder={placeholder} />
           </SelectTrigger>
         </FormControl>
-        <SelectContent>
+        <SelectContent className="max-h-[300px]">
           {categories.map((category) => (
-            <TooltipProvider key={category}>
-              <Tooltip delayDuration={300}>
-                <TooltipTrigger asChild>
-                  <SelectItem value={category} className="cursor-pointer">
-                    {category}
-                  </SelectItem>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="max-w-xs">
-                  <p className="text-sm">{CATEGORY_DESCRIPTIONS[category]}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <SelectItem 
+              key={category} 
+              value={category} 
+              className="cursor-pointer py-3 px-4 hover:bg-accent focus:bg-accent"
+            >
+              <div className="flex flex-col items-start gap-1 w-full">
+                <span className="font-medium">{category}</span>
+                <span className="text-xs text-muted-foreground">
+                  {CATEGORY_DESCRIPTIONS[category]}
+                </span>
+              </div>
+            </SelectItem>
           ))}
         </SelectContent>
       </Select>
