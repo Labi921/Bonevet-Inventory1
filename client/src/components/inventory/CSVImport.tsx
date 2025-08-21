@@ -95,6 +95,7 @@ export default function CSVImport() {
     if (lines.length === 0) return [];
 
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    console.log('CSV Headers found:', headers);
     const data: CSVRow[] = [];
 
     for (let i = 1; i < lines.length; i++) {
@@ -104,8 +105,8 @@ export default function CSVImport() {
       headers.forEach((header, index) => {
         const value = values[index] || '';
         
-        // Map CSV headers to our schema
-        switch (header) {
+        // Map CSV headers to our schema (case insensitive)
+        switch (header.toLowerCase()) {
           case 'item id':
           case 'itemid':
           case 'id':
@@ -125,8 +126,11 @@ export default function CSVImport() {
             row.status = value || 'Available';
             break;
           case 'quantity':
+          case 'quantity total':
           case 'qty':
+          case 'amount':
             row.quantity = value ? parseInt(value) : 1;
+            console.log(`Parsed quantity for ${row.name}: ${value} -> ${row.quantity}`);
             break;
           case 'price':
           case 'unitprice':
