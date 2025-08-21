@@ -302,20 +302,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Staff User middleware for resources
-  const requireStaffUser = (req: Request, res: Response, next: any) => {
+  // Standard User and above middleware for resources
+  const requireStandardUserOrAbove = (req: Request, res: Response, next: any) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
     }
     const user = req.user as any;
-    if (!user || !['staff_user', 'admin', 'super_admin'].includes(user.role)) {
+    if (!user || !['standard_user', 'staff_user', 'admin', 'super_admin'].includes(user.role)) {
       return res.status(403).json({ message: "Forbidden" });
     }
     next();
   };
 
   // Resource Management Routes
-  app.get("/api/resources", requireStaffUser, async (req, res) => {
+  app.get("/api/resources", requireStandardUserOrAbove, async (req, res) => {
     try {
       const type = req.query.type as string;
       let resources;

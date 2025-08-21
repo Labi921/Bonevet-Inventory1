@@ -127,11 +127,11 @@ export default function Sidebar() {
           </div>
         )}
         
-        {/* Resources for Staff and above */}
-        {(user?.role === 'staff_user' || user?.role === 'admin' || user?.role === 'super_admin') && (
-          <div className={`py-4 ${user?.role !== 'staff_user' ? 'border-t border-primary-foreground/20' : ''}`}>
+        {/* Resources for Standard Users, Staff and above */}
+        {(user?.role === 'standard_user' || user?.role === 'staff_user' || user?.role === 'admin' || user?.role === 'super_admin') && (
+          <div className={`py-4 ${user?.role !== 'staff_user' && user?.role !== 'standard_user' ? 'border-t border-primary-foreground/20' : ''}`}>
             <p className="text-primary-foreground/90 text-xs uppercase font-bold">
-              {user?.role === 'staff_user' ? 'Staff Resources' : 'Staff'}
+              {user?.role === 'staff_user' ? 'Staff Resources' : user?.role === 'standard_user' ? 'Resources' : 'Staff'}
             </p>
             <nav className="mt-2">
               <Link 
@@ -155,6 +155,21 @@ export default function Sidebar() {
           <div className="py-4 border-t border-primary-foreground/20">
             <p className="text-primary-foreground/90 text-xs uppercase font-bold">Admin</p>
             <nav className="mt-2">
+              {/* User Management for Admin and Super Admin */}
+              <Link 
+                href="/users"
+                className={`block py-2.5 px-4 rounded transition duration-200 
+                  ${isActive('/users') 
+                    ? 'bg-primary-foreground/20 text-primary-foreground' 
+                    : 'hover:bg-primary-foreground/10 text-primary-foreground/80'}`}
+              >
+                <div className="flex items-center">
+                  <Users className="w-5 h-5 mr-2" />
+                  Users
+                </div>
+              </Link>
+              
+              {/* Settings and Audit Logs */}
               {adminItems.map((item) => (
                 <Link 
                   key={item.path} 
@@ -170,27 +185,6 @@ export default function Sidebar() {
                   </div>
                 </Link>
               ))}
-            </nav>
-          </div>
-        )}
-
-        {/* Super Admin only */}
-        {user?.role === 'super_admin' && (
-          <div className="py-4 border-t border-primary-foreground/20">
-            <p className="text-primary-foreground/90 text-xs uppercase font-bold">Super Admin</p>
-            <nav className="mt-2">
-              <Link 
-                href="/users"
-                className={`block py-2.5 px-4 rounded transition duration-200 
-                  ${isActive('/users') 
-                    ? 'bg-primary-foreground/20 text-primary-foreground' 
-                    : 'hover:bg-primary-foreground/10 text-primary-foreground/80'}`}
-              >
-                <div className="flex items-center">
-                  <Users className="w-5 h-5 mr-2" />
-                  Users
-                </div>
-              </Link>
             </nav>
           </div>
         )}

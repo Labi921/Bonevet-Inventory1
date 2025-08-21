@@ -204,10 +204,12 @@ function Router() {
         )}
       </Route>
       
-      {/* Resources route */}
+      {/* Resources route - Standard Users and above */}
       <Route path="/resources">
         <Layout>
-          <Resources />
+          <ProtectedRoute allowedRoles={['standard_user', 'staff_user', 'admin', 'super_admin']}>
+            <Resources />
+          </ProtectedRoute>
         </Layout>
       </Route>
       
