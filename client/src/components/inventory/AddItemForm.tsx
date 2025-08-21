@@ -6,7 +6,8 @@ import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { itemCategoryEnum, itemStatusEnum, itemUsageEnum } from '@/lib/utils/categoryUtils';
+import { itemCategoryEnum, itemStatusEnum, itemUsageEnum } from '@shared/schema';
+import { CategorySelect } from '@/components/ui/CategorySelect';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
@@ -68,7 +69,7 @@ export default function AddItemForm() {
     defaultValues: {
       name: '',
       model: '',
-      category: 'Equipment',
+      category: 'Electronics & IoT',
       status: 'Available',
       location: '',
       quantity: 1,
@@ -221,28 +222,12 @@ export default function AddItemForm() {
                 control={form.control}
                 name="category"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category *</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Electronics">Electronics</SelectItem>
-                        <SelectItem value="Equipment">Equipment</SelectItem>
-                        <SelectItem value="Tools">Tools</SelectItem>
-                        <SelectItem value="Furniture">Furniture</SelectItem>
-                        <SelectItem value="Software">Software</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
+                  <CategorySelect
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Select category"
+                    required={true}
+                  />
                 )}
               />
               

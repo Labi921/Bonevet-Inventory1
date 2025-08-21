@@ -22,15 +22,32 @@ export const insertUserSchema = createInsertSchema(users).pick({
   active: true,
 });
 
-// Item Category Enum
+// Item Category Enum - Updated with new categories
 export const itemCategoryEnum = z.enum([
-  "Furniture",
-  "Equipment",
-  "Tools",
-  "Electronics",
-  "Software",
-  "Other"
+  "Fabrication Equipment",
+  "Electronics & IoT", 
+  "Tools & Handheld Devices",
+  "Machinery & Heavy Equipment",
+  "Hardware & Fasteners",
+  "Furniture & Fixtures",
+  "Safety & Protection",
+  "Software & Digital Resources",
+  "Consumables",
+  "Learning & Educational Kits"
 ]);
+
+export const CATEGORY_DESCRIPTIONS = {
+  "Fabrication Equipment": "Everything used for creating, cutting, or shaping materials.",
+  "Electronics & IoT": "All electrical/electronic components, devices, and tools.",
+  "Tools & Handheld Devices": "Manual or portable powered tools.",
+  "Machinery & Heavy Equipment": "Large powered machines for workshop use.",
+  "Hardware & Fasteners": "Small physical parts for building and assembly.",
+  "Furniture & Fixtures": "Physical setup and storage of the workspace.",
+  "Safety & Protection": "All safety gear and compliance equipment.",
+  "Software & Digital Resources": "All digital tools and licenses.",
+  "Consumables": "Items that get used up and need regular restocking.",
+  "Learning & Educational Kits": "Items for training, workshops, and teaching."
+} as const;
 
 // Item Status Enum
 export const itemStatusEnum = z.enum([

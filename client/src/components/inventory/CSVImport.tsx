@@ -120,7 +120,16 @@ export default function CSVImport() {
             row.model = value;
             break;
           case 'category':
-            row.category = value;
+            // Map old categories to new ones for backward compatibility
+            const categoryMapping: { [key: string]: string } = {
+              "Equipment": "Electronics & IoT",
+              "Tools": "Tools & Handheld Devices", 
+              "Electronics": "Electronics & IoT",
+              "Furniture": "Furniture & Fixtures",
+              "Software": "Software & Digital Resources",
+              "Other": "Learning & Educational Kits"
+            };
+            row.category = categoryMapping[value] || value;
             break;
           case 'status':
             row.status = value || 'Available';
