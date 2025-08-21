@@ -262,13 +262,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ].join(','))
       ];
       
-      const csvContent = csvRows.join('\n');
+      // Add UTF-8 BOM for proper encoding of special characters like €
+      const csvContent = '\uFEFF' + csvRows.join('\n');
       const filename = `inventory-export-${new Date().toISOString().split('T')[0]}.csv`;
       
-      // Set headers for file download
-      res.setHeader('Content-Type', 'text/csv');
+      // Set headers for file download with UTF-8 encoding
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.setHeader('Content-Length', Buffer.byteLength(csvContent));
+      res.setHeader('Content-Length', Buffer.byteLength(csvContent, 'utf8'));
       
       // Log the activity
       await storage.createActivityLog({
