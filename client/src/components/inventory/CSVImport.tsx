@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,8 @@ import {
   AlertTriangle, 
   Download,
   Eye,
-  Trash2
+  Trash2,
+  Info
 } from 'lucide-react';
 
 interface CSVRow {
@@ -38,6 +39,13 @@ interface ValidationResult {
   errors: { row: number; errors: string[]; data: any }[];
 }
 
+interface Category {
+  id: number;
+  name: string;
+  description: string;
+  isActive: boolean;
+}
+
 export default function CSVImport() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -48,9 +56,15 @@ export default function CSVImport() {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
+  const [showReference, setShowReference] = useState(false);
+
+  // Fetch active categories from the API
+  const { data: categories } = useQuery<Category[]>({
+    queryKey: ['/api/categories/active'],
+  });
 
   // Valid options for dropdown fields
-  const validCategories = ["Furniture", "Equipment", "Tools", "Electronics", "Software", "Other"];
+  const validCategories = categories ? categories.map(cat => cat.name) : [];
   const validStatuses = ["Available", "In Use", "Loaned Out", "Partially Available", "Damaged", "Maintenance"];
   const validUsages = ["None", "Staff", "Members", "Others"];
 
@@ -450,6 +464,37 @@ export default function CSVImport() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Categories Reference */}
+        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="font-medium text-blue-900 flex items-center gap-2">
+              <Info className="h-4 w-4" />
+              Available Categories
+            </h4>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setShowReference(!showReference)}
+              className="text-blue-700 hover:text-blue-900"
+            >
+              {showReference ? 'Hide' : 'Show'} Reference
+            </Button>
+          </div>
+          {showReference && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              {categories && categories.map((category) => (
+                <div key={category.id} className="p-3 bg-white rounded border">
+                  <div className="font-medium text-sm text-blue-900">{category.name}</div>
+                  <div className="text-xs text-blue-600 mt-1">{category.description}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-sm text-blue-700 mt-2">
+            Use these exact category names in your CSV file. Click "Show Reference" to see descriptions.
+          </p>
+        </div>
+
         {/* Template Download */}
         <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
           <div>

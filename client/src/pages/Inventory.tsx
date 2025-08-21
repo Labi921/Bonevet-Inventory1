@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
-import { PlusCircle, Download, Search, Filter, ListFilter, Upload, Settings } from 'lucide-react';
+import { PlusCircle, Download, Search, Filter, ListFilter, Upload, Settings, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -29,6 +29,7 @@ export default function Inventory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showCategoryReference, setShowCategoryReference] = useState(false);
 
   // Fetch active categories
   const { data: categories } = useQuery<Category[]>({
@@ -128,6 +129,13 @@ export default function Inventory() {
           <Button variant="outline" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" /> Export
           </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => setShowCategoryReference(!showCategoryReference)}
+            className="text-blue-600 hover:text-blue-700"
+          >
+            <Info className="h-4 w-4 mr-2" /> Category Reference
+          </Button>
           <Button variant="outline" asChild>
             <a href="/inventory/categories">
               <Settings className="h-4 w-4 mr-2" /> Manage Categories
@@ -135,6 +143,33 @@ export default function Inventory() {
           </Button>
         </div>
       </CardHeader>
+      
+      {/* Categories Reference Panel */}
+      {showCategoryReference && (
+        <CardContent className="border-b">
+          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h4 className="font-medium text-blue-900 flex items-center gap-2 mb-3">
+              <Info className="h-4 w-4" />
+              Available Categories for Import/Export
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {categories && categories.map((category) => (
+                <div key={category.id} className="p-3 bg-white rounded border border-blue-200">
+                  <div className="font-medium text-sm text-blue-900">{category.name}</div>
+                  <div className="text-xs text-blue-600 mt-1">{category.description}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 p-3 bg-yellow-50 rounded border border-yellow-200">
+              <p className="text-sm text-yellow-800">
+                <strong>For CSV Import/Export:</strong> Use these exact category names in your CSV files. 
+                Category names are case-sensitive and must match exactly.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      )}
+
       <CardContent>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 mb-4">
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
