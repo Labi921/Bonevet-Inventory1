@@ -73,13 +73,14 @@ export default function Barcode() {
         console.log(`Generating barcode for itemId: ${itemId} on canvas: ${canvasId}`);
         JsBarcode(canvas, itemId, {
           format: "CODE128",
-          width: 1.5,    // Narrower bars to fit in 60mm width
-          height: 22,    // Shorter height to leave room for text
+          width: 2,      // Increased width for better quality
+          height: 30,    // Increased height for better scanning
           displayValue: false, // We'll handle text separately for better control
-          fontSize: 8,
-          margin: 1,     // Minimal margin
+          fontSize: 10,
+          margin: 2,     // Slightly more margin for clarity
           background: "#ffffff",
           lineColor: "#000000",
+          flat: true,    // Ensures sharp lines without anti-aliasing
           valid: (valid) => {
             if (!valid) {
               console.error('Invalid barcode for itemId:', itemId);
@@ -156,7 +157,7 @@ export default function Barcode() {
               ${item ? '' : 'visibility: hidden;'}
             ">
               ${item ? `
-                <canvas id="barcode-${startIndex + cellIndex}" style="margin-bottom: 2px;"></canvas>
+                <canvas id="barcode-${startIndex + cellIndex}" style="margin-bottom: 2px; image-rendering: crisp-edges;"></canvas>
                 <div style="
                   font-size: 8px !important; 
                   font-weight: bold !important; 
@@ -206,13 +207,14 @@ export default function Barcode() {
           }
           
           const canvas = await html2canvas(element as HTMLElement, {
-            scale: 2, // Reduced scale to avoid text rendering issues
+            scale: 3, // Higher scale for better quality
             useCORS: true,
             allowTaint: true,
             backgroundColor: '#ffffff',
             logging: false,
             removeContainer: true,
             imageTimeout: 15000,
+            pixelRatio: window.devicePixelRatio || 1, // Use device pixel ratio for crisp rendering
             onclone: (clonedDoc) => {
               // Ensure all fonts and text are properly rendered
               const clonedElement = clonedDoc.querySelector('[id^="barcode-sheet-"]') as HTMLElement;
@@ -560,7 +562,11 @@ export default function Barcode() {
                                   <canvas 
                                     id={`preview-barcode-${index}`}
                                     className="mb-1"
-                                    style={{ maxWidth: '120px', height: '24px' }}
+                                    style={{ 
+                                      maxWidth: '120px', 
+                                      height: '30px',
+                                      imageRendering: 'crisp-edges'
+                                    }}
                                   />
                                   <div className="text-center leading-tight">
                                     <div className="font-bold text-[6px] truncate w-full">{item.name}</div>
