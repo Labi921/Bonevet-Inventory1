@@ -8,6 +8,15 @@ BONEVET is a comprehensive inventory management system built with a modern full-
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+### December 2024 - Role-Based User Management System
+- Implemented comprehensive user management system with four distinct role types
+- Added Resources library for staff users to access equipment manuals and videos
+- Updated navigation system with role-based access control
+- Created Super Admin role with full system access including user management
+- Added sample users and resources for testing functionality
+
 ## System Architecture
 
 ### Frontend Architecture
@@ -44,9 +53,14 @@ Preferred communication style: Simple, everyday language.
 
 ### Authentication System
 - Session-based authentication with Passport.js
-- Role-based access control (admin/user roles)
+- Role-based access control with four user types:
+  - Super Admin: Full access including user management
+  - Admin: Can manage inventory, documents, and resources
+  - Standard User: Can add products via CSV and view inventory
+  - Staff User: Access to resources, manuals, and repair guides
 - Protected routes with authentication middleware
 - Context-based authentication state management
+- Navigation menu adapts based on user role permissions
 
 ### Inventory Management
 - Item categorization with 10 new categories:
@@ -79,6 +93,14 @@ Preferred communication style: Simple, everyday language.
 - Document versioning and audit trail
 - Template-based content generation
 - Borrowing request system for external equipment requests
+
+### Resources Management System
+- Equipment manuals (PDF downloads) organized by category
+- Video tutorials with YouTube integration and embedded players
+- General documents for safety guides and procedures
+- BONEVET makerspace rules and regulations
+- Role-based access: Staff users and above can view, Admins can manage
+- Resource categorization and search functionality
 
 ### Barcode System
 - Equipment barcode generation with JsBarcode library
