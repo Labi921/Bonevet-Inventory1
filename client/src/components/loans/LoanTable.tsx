@@ -3,7 +3,7 @@ import { format, isAfter, parseISO } from 'date-fns';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { Eye } from 'lucide-react';
+import { Eye, FileSignature } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -59,6 +59,32 @@ export default function LoanTable({ loans, isLoading }: LoanTableProps) {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedLoans = loans?.slice(startIndex, startIndex + itemsPerPage) || [];
   
+  // Generate agreement function
+  const handleGenerateAgreement = (loan: any) => {
+    const inventoryItem = inventory?.find((item: any) => item.id === loan.itemId);
+    
+    // Create pre-fill data for the loan agreement form
+    const prefillData = {
+      borrowerName: loan.borrowerName || '',
+      borrowerType: loan.borrowerType || '',
+      borrowerContact: loan.borrowerContact || '',
+      loanDate: loan.loanDate ? new Date(loan.loanDate).toISOString().split('T')[0] : '',
+      returnDate: loan.expectedReturnDate ? new Date(loan.expectedReturnDate).toISOString().split('T')[0] : '',
+      equipmentList: [{
+        itemId: inventoryItem?.itemId || '',
+        name: inventoryItem?.name || 'Unknown Item',
+        model: inventoryItem?.itemId || '',
+        quantity: loan.quantityLoaned || 1,
+        initialCondition: `Condition: ${inventoryItem?.status || 'Unknown'}`
+      }],
+      notes: loan.notes || '',
+      prefillSource: 'individual-loan'
+    };
+    
+    // Navigate to loan agreement with pre-fill data
+    navigate(`/loan-agreement?prefill=${encodeURIComponent(JSON.stringify(prefillData))}`);
+  };
+
   // Return loan mutation
   const returnLoan = useMutation({
     mutationFn: async (id: number) => {
@@ -277,6 +303,16 @@ export default function LoanTable({ loans, isLoading }: LoanTableProps) {
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
+                        
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-purple-600 hover:text-purple-700"
+                          onClick={() => handleGenerateAgreement(loan)}
+                        >
+                          <FileSignature className="h-4 w-4 mr-1" />
+                          Agreement
+                        </Button>
                         
                         {loan.status !== 'Returned' ? (
                           <AlertDialog>

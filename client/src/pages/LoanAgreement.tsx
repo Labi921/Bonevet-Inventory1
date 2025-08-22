@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { 
@@ -70,10 +71,26 @@ export default function LoanAgreement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const printRef = useRef<HTMLDivElement>(null);
+  const [location] = useLocation();
 
-  const [equipmentList, setEquipmentList] = useState<EquipmentItem[]>([
-    { itemId: '', name: '', model: '', quantity: 1, initialCondition: '' }
-  ]);
+  // Parse pre-fill data from URL parameters
+  const urlParams = new URLSearchParams(location.split('?')[1] || '');
+  const prefillParam = urlParams.get('prefill');
+  let prefillData: any = null;
+  
+  try {
+    if (prefillParam) {
+      prefillData = JSON.parse(decodeURIComponent(prefillParam));
+    }
+  } catch (error) {
+    console.error('Error parsing prefill data:', error);
+  }
+
+  const [equipmentList, setEquipmentList] = useState<EquipmentItem[]>(
+    prefillData?.equipmentList || [
+      { itemId: '', name: '', model: '', quantity: 1, initialCondition: '' }
+    ]
+  );
   const [selectedLoan, setSelectedLoan] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [generatedDocumentId, setGeneratedDocumentId] = useState<number | null>(null);
@@ -91,16 +108,16 @@ export default function LoanAgreement() {
   const form = useForm<LoanAgreementForm>({
     resolver: zodResolver(loanAgreementSchema),
     defaultValues: {
-      loanDate: format(new Date(), 'yyyy-MM-dd'),
-      returnDate: '',
-      borrowerName: '',
-      borrowerPersonalId: '',
-      borrowerLegalRep: '',
-      borrowerAddress: '',
-      borrowerPhone: '',
-      borrowerEmail: '',
-      bonevevRepresentativeName: user?.name || '',
-      dailyPenalty: '5',
+      loanDate: prefillData?.loanDate || format(new Date(), 'yyyy-MM-dd'),
+      returnDate: prefillData?.returnDate || '',
+      borrowerName: prefillData?.borrowerName || '',
+      borrowerPersonalId: prefillData?.borrowerPersonalId || '',
+      borrowerLegalRep: prefillData?.borrowerLegalRep || '',
+      borrowerAddress: prefillData?.borrowerAddress || '',
+      borrowerPhone: prefillData?.borrowerPhone || (prefillData?.borrowerContact ? prefillData.borrowerContact.split(' | ')[0] : ''),
+      borrowerEmail: prefillData?.borrowerEmail || (prefillData?.borrowerContact ? prefillData.borrowerContact.split(' | ')[1] : ''),
+      bonevevRepresentativeName: prefillData?.bonevevRepresentativeName || user?.name || '',
+      dailyPenalty: prefillData?.dailyPenalty || '5',
       equipmentList: equipmentList
     }
   });
@@ -130,28 +147,15 @@ export default function LoanAgreement() {
     }
   });
 
-  // Download PDF function
-  const downloadPDF = async () => {
-    if (!generatedDocumentId) {
-      toast({
-        title: "No Document",
-        description: "Please generate an agreement first.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/loan-agreement/${generatedDocumentId}/download`, {
-        method: 'GET',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to download PDF');
-      }
-
+  // PDF download mutation 
+  const downloadPDFMutation = useMutation({
+    mutationFn: async (documentId: number) => {
+      const response = await apiRequest('GET', `/api/loan-agreement/download/${documentId}`);
       const blob = await response.blob();
+      return blob;
+    },
+    onSuccess: (blob) => {
+      // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.style.display = 'none';
@@ -160,34 +164,28 @@ export default function LoanAgreement() {
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
+      
       toast({
         title: "Download Started",
-        description: "PDF download has started successfully."
+        description: "Your loan agreement PDF is downloading."
       });
-    } catch (error) {
+    },
+    onError: (error: any) => {
       toast({
         title: "Download Failed",
-        description: "Failed to download the PDF document.",
+        description: error.message || "Failed to download PDF.",
         variant: "destructive"
       });
     }
+  });
+
+  // Add equipment item
+  const addEquipmentItem = () => {
+    setEquipmentList([...equipmentList, { itemId: '', name: '', model: '', quantity: 1, initialCondition: '' }]);
   };
 
-  const addEquipmentRow = () => {
-    const newEquipment: EquipmentItem = {
-      itemId: '',
-      name: '',
-      model: '',
-      quantity: 1,
-      initialCondition: ''
-    };
-    setEquipmentList([...equipmentList, newEquipment]);
-    form.setValue('equipmentList', [...equipmentList, newEquipment]);
-  };
-
-  const removeEquipmentRow = (index: number) => {
+  // Remove equipment item
+  const removeEquipmentItem = (index: number) => {
     if (equipmentList.length > 1) {
       const newList = equipmentList.filter((_, i) => i !== index);
       setEquipmentList(newList);
@@ -195,569 +193,467 @@ export default function LoanAgreement() {
     }
   };
 
+  // Update equipment item
   const updateEquipmentItem = (index: number, field: keyof EquipmentItem, value: any) => {
     const newList = [...equipmentList];
     newList[index] = { ...newList[index], [field]: value };
-    
-    // Auto-fill equipment details if item selected from inventory
-    if (field === 'itemId' && value) {
-      const selectedItem = inventoryItems.find(item => item.itemId === value);
-      if (selectedItem) {
-        newList[index].name = selectedItem.name;
-        newList[index].model = selectedItem.itemId; // Using itemId as model for now
-        newList[index].initialCondition = `Condition: ${selectedItem.status}`;
-      }
-    }
-    
     setEquipmentList(newList);
     form.setValue('equipmentList', newList);
   };
 
-  const fillFromExistingLoan = (loanId: string) => {
-    const loan = loans.find((l: any) => l.id.toString() === loanId);
-    if (loan) {
-      form.setValue('borrowerName', loan.borrowerName);
-      form.setValue('borrowerPhone', loan.contactInfo);
-      form.setValue('borrowerEmail', loan.borrowerEmail || '');
-      form.setValue('loanDate', format(new Date(loan.loanDate), 'yyyy-MM-dd'));
-      if (loan.expectedReturnDate) {
-        form.setValue('returnDate', format(new Date(loan.expectedReturnDate), 'yyyy-MM-dd'));
-      }
-      
-      // Fill equipment if available
-      if (loan.itemId && loan.itemName) {
-        const equipment: EquipmentItem = {
-          itemId: loan.itemId,
-          name: loan.itemName,
-          model: loan.itemId,
-          quantity: 1,
-          initialCondition: 'Good condition'
-        };
-        setEquipmentList([equipment]);
-        form.setValue('equipmentList', [equipment]);
-      }
-      
-      setSelectedLoan(loan);
-      toast({
-        title: "Loan Data Loaded",
-        description: "Form has been pre-filled with existing loan information."
-      });
+  // Auto-fill from selected inventory item
+  const handleInventoryItemSelect = (index: number, itemId: string) => {
+    const selectedItem = inventoryItems.find(item => item.itemId === itemId);
+    if (selectedItem) {
+      updateEquipmentItem(index, 'itemId', itemId);
+      updateEquipmentItem(index, 'name', selectedItem.name);
+      updateEquipmentItem(index, 'model', itemId);
+      updateEquipmentItem(index, 'initialCondition', `Condition: ${selectedItem.status || 'Good'} - Available Quantity: ${selectedItem.quantityAvailable}`);
     }
   };
 
-  const handlePrint = () => {
-    if (printRef.current) {
-      const printContents = printRef.current.innerHTML;
-      const originalContents = document.body.innerHTML;
-      document.body.innerHTML = printContents;
-      window.print();
-      document.body.innerHTML = originalContents;
-      window.location.reload();
+  // Pre-fill from existing loan
+  const handleLoanSelect = (loanId: string) => {
+    if (!loanId) {
+      setSelectedLoan(null);
+      return;
+    }
+
+    const selectedLoanData = loans.find((loan: any) => loan.id.toString() === loanId);
+    if (selectedLoanData) {
+      setSelectedLoan(selectedLoanData);
+      
+      // Pre-fill form with loan data
+      form.setValue('borrowerName', selectedLoanData.borrowerName || '');
+      form.setValue('borrowerPhone', selectedLoanData.borrowerContact?.split(' | ')[0] || '');
+      form.setValue('borrowerEmail', selectedLoanData.borrowerContact?.split(' | ')[1] || '');
+      form.setValue('loanDate', selectedLoanData.loanDate ? format(new Date(selectedLoanData.loanDate), 'yyyy-MM-dd') : '');
+      form.setValue('returnDate', selectedLoanData.expectedReturnDate ? format(new Date(selectedLoanData.expectedReturnDate), 'yyyy-MM-dd') : '');
+      
+      // Pre-fill equipment from loan
+      const selectedItem = inventoryItems.find((item: any) => item.id === selectedLoanData.itemId);
+      if (selectedItem) {
+        const newEquipmentList = [{
+          itemId: selectedItem.itemId || '',
+          name: selectedItem.name || 'Unknown Item',
+          model: selectedItem.itemId || '',
+          quantity: selectedLoanData.quantityLoaned || 1,
+          initialCondition: `Condition: ${selectedItem.status || 'Unknown'}`
+        }];
+        
+        setEquipmentList(newEquipmentList);
+        form.setValue('equipmentList', newEquipmentList);
+      }
     }
   };
 
-  const onSubmit = (data: LoanAgreementForm) => {
-    generateAgreementMutation.mutate(data);
+  const onSubmit = async (data: LoanAgreementForm) => {
+    // Update form data with current equipment list
+    const formDataWithEquipment = {
+      ...data,
+      equipmentList
+    };
+    
+    await generateAgreementMutation.mutateAsync(formDataWithEquipment);
   };
 
-  if (!user || !['admin', 'super_admin'].includes(user.role)) {
+  const handleDownload = () => {
+    if (generatedDocumentId) {
+      downloadPDFMutation.mutate(generatedDocumentId);
+    }
+  };
+
+  if (!user) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Access Denied</h2>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">You don't have permission to access this page.</p>
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-muted-foreground">Please log in to access loan agreement generation.</p>
+      </div>
+    );
+  }
+
+  // Check if user has required permissions
+  if (user.role !== 'Admin' && user.role !== 'Super Admin') {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-muted-foreground">You don't have permission to generate loan agreements.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 max-w-4xl mx-auto p-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Loan Agreement Generator</h2>
+          <h1 className="text-3xl font-bold tracking-tight">Loan Agreement Generator</h1>
           <p className="text-muted-foreground">
-            Generate fillable Albanian loan agreement documents for equipment borrowing.
+            Generate professional Albanian loan agreements with automated PDF export
           </p>
         </div>
-        
-        {showPreview && (
-          <Button onClick={handlePrint} className="flex items-center gap-2">
-            <Printer className="h-4 w-4" />
-            Print Agreement
-          </Button>
-        )}
+        <div className="flex items-center space-x-2">
+          <Calendar className="h-5 w-5 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">
+            {format(new Date(), 'MMMM dd, yyyy')}
+          </span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Form Section */}
+      {/* Pre-fill from existing loan */}
+      {loans.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Agreement Details
+            <CardTitle className="flex items-center">
+              <FileText className="h-5 w-5 mr-2" />
+              Pre-fill from Existing Loan
             </CardTitle>
             <CardDescription>
-              Fill in the loan agreement information. You can pre-fill data from existing loans.
+              Select an existing loan to automatically populate borrower and equipment information
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Load from existing loan */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Pre-fill from existing loan (optional)</label>
-              <Select onValueChange={fillFromExistingLoan}>
-                <SelectTrigger data-testid="select-existing-loan">
-                  <SelectValue placeholder="Select an existing loan..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.isArray(loans) && loans.map((loan: any) => (
-                    <SelectItem key={loan.id} value={loan.id.toString()}>
-                      {loan.borrowerName} - {loan.itemName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                {/* Dates */}
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="loanDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Loan Date</FormLabel>
-                        <FormControl>
-                          <Input type="date" data-testid="input-loan-date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="returnDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Return Date</FormLabel>
-                        <FormControl>
-                          <Input type="date" data-testid="input-return-date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Borrower Information */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Borrower Information</h3>
-                  
-                  <FormField
-                    control={form.control}
-                    name="borrowerName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Name / Institution</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter name or institution" data-testid="input-borrower-name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="borrowerPersonalId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Personal ID / NRB</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Personal ID or NRB" data-testid="input-personal-id" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="borrowerLegalRep"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Legal Representative (optional)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Legal representative" data-testid="input-legal-rep" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="borrowerAddress"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Address</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Full address" data-testid="input-address" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="borrowerPhone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone Number</FormLabel>
-                          <FormControl>
-                            <Input placeholder="+383 XX XXX XXX" data-testid="input-phone" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="borrowerEmail"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input type="email" placeholder="email@example.com" data-testid="input-email" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-
-                {/* Equipment Section */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">Equipment List</h3>
-                    <Button
-                      type="button"
-                      onClick={addEquipmentRow}
-                      size="sm"
-                      variant="outline"
-                      className="flex items-center gap-2"
-                      data-testid="button-add-equipment"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add Equipment
-                    </Button>
-                  </div>
-                  
-                  {equipmentList.map((equipment, index) => (
-                    <Card key={index} className="p-4">
-                      <div className="flex justify-between items-start mb-4">
-                        <h4 className="font-medium">Equipment {index + 1}</h4>
-                        {equipmentList.length > 1 && (
-                          <Button
-                            type="button"
-                            onClick={() => removeEquipmentRow(index)}
-                            size="sm"
-                            variant="destructive"
-                            data-testid={`button-remove-equipment-${index}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm font-medium">Select from Inventory</label>
-                          <Select
-                            value={equipment.itemId}
-                            onValueChange={(value) => updateEquipmentItem(index, 'itemId', value)}
-                          >
-                            <SelectTrigger data-testid={`select-equipment-${index}`}>
-                              <SelectValue placeholder="Choose equipment..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {inventoryItems
-                                .filter(item => item.status === 'Available')
-                                .map((item) => (
-                                  <SelectItem key={item.itemId} value={item.itemId}>
-                                    {item.name} ({item.itemId})
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div>
-                          <label className="text-sm font-medium">Quantity</label>
-                          <Input
-                            type="number"
-                            min="1"
-                            value={equipment.quantity}
-                            onChange={(e) => updateEquipmentItem(index, 'quantity', parseInt(e.target.value) || 1)}
-                            data-testid={`input-quantity-${index}`}
-                          />
-                        </div>
-                        
-                        <div className="col-span-2">
-                          <label className="text-sm font-medium">Equipment Name</label>
-                          <Input
-                            value={equipment.name}
-                            onChange={(e) => updateEquipmentItem(index, 'name', e.target.value)}
-                            placeholder="Equipment name"
-                            data-testid={`input-equipment-name-${index}`}
-                          />
-                        </div>
-                        
-                        <div className="col-span-2">
-                          <label className="text-sm font-medium">Model/ID</label>
-                          <Input
-                            value={equipment.model}
-                            onChange={(e) => updateEquipmentItem(index, 'model', e.target.value)}
-                            placeholder="Model or ID number"
-                            data-testid={`input-equipment-model-${index}`}
-                          />
-                        </div>
-                        
-                        <div className="col-span-2">
-                          <label className="text-sm font-medium">Initial Condition</label>
-                          <Textarea
-                            value={equipment.initialCondition}
-                            onChange={(e) => updateEquipmentItem(index, 'initialCondition', e.target.value)}
-                            placeholder="Describe the initial condition of the equipment"
-                            data-testid={`textarea-condition-${index}`}
-                          />
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-
-                {/* Additional Settings */}
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="bonevevRepresentativeName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>BONEVET Representative</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Representative name" data-testid="input-representative" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="dailyPenalty"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Daily Penalty (€)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="5" data-testid="input-daily-penalty" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="flex gap-4">
-                  <Button 
-                    type="submit" 
-                    className="flex-1" 
-                    disabled={generateAgreementMutation.isPending}
-                    data-testid="button-generate-agreement"
-                  >
-                    {generateAgreementMutation.isPending ? 'Generating...' : 'Generate Agreement'}
-                  </Button>
-                  
-                  <Button 
-                    type="button" 
-                    variant="outline"
-                    onClick={downloadPDF}
-                    disabled={!generatedDocumentId}
-                    data-testid="button-download-pdf"
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    Download PDF
-                  </Button>
-                </div>
-              </form>
-            </Form>
+          <CardContent>
+            <Select onValueChange={handleLoanSelect}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select an existing loan to pre-fill data..." />
+              </SelectTrigger>
+              <SelectContent>
+                {loans.map((loan: any) => (
+                  <SelectItem key={loan.id} value={loan.id.toString()}>
+                    {loan.borrowerName || 'Unknown'} - {inventoryItems.find((item: any) => item.id === loan.itemId)?.name || 'Unknown Item'} 
+                    ({loan.loanDate ? format(new Date(loan.loanDate), 'MMM dd, yyyy') : 'Unknown Date'})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </CardContent>
         </Card>
+      )}
 
-        {/* Preview Section */}
-        {showPreview && (
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {/* Loan Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Agreement Preview</CardTitle>
-              <CardDescription>
-                Generated Albanian loan agreement ready for printing and signing.
-              </CardDescription>
+              <CardTitle>Loan Information</CardTitle>
+              <CardDescription>Basic loan details and dates</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div ref={printRef} className="print-content">
-                <LoanAgreementDocument form={form.getValues()} />
-              </div>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="loanDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Loan Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="returnDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Expected Return Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="bonevevRepresentativeName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>BONEVET Representative</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Representative name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="dailyPenalty"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Daily Penalty (EUR)</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="5" type="number" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
           </Card>
-        )}
-      </div>
-    </div>
-  );
-}
 
-// Albanian Loan Agreement Document Component
-function LoanAgreementDocument({ form }: { form: LoanAgreementForm }) {
-  return (
-    <div className="p-6 bg-white text-black font-serif text-sm leading-6" style={{ maxWidth: '210mm', margin: '0 auto' }}>
-      <style>{`
-        @media print {
-          .print-content {
-            font-size: 12pt !important;
-            line-height: 1.4 !important;
-          }
-          .print-content table {
-            border-collapse: collapse !important;
-          }
-          .print-content th, .print-content td {
-            border: 1px solid black !important;
-            padding: 8px !important;
-          }
-        }
-      `}</style>
-      
-      <div className="text-center mb-6">
-        <h1 className="text-xl font-bold">MARRËVESHJE PËR HUAZIM TË PAJISJEVE</h1>
-      </div>
+          {/* Borrower Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Borrower Information</CardTitle>
+              <CardDescription>Complete contact and identification details</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="borrowerName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name / Institution Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter full name or institution" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-      <div className="mb-6">
-        <div className="flex justify-between">
-          <span>Data e Huazimit: <strong>{format(new Date(form.loanDate), 'dd/MM/yyyy')}</strong></span>
-          <span>Data e Kthimit: <strong>{format(new Date(form.returnDate), 'dd/MM/yyyy')}</strong></span>
-        </div>
-      </div>
+              <FormField
+                control={form.control}
+                name="borrowerPersonalId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Personal ID / NRB</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Personal ID or NRB number" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-      <div className="mb-6">
-        <h2 className="font-bold mb-2">Palët e Marrëveshjes:</h2>
-        
-        <div className="grid grid-cols-2 gap-8">
-          <div>
-            <h3 className="font-bold">Huadhënësi:</h3>
-            <div className="mt-2">
-              <p><strong>Emri:</strong> BONEVET Gjakova</p>
-              <p><strong>Adresa:</strong> Vëllezërit Frashëri, pn</p>
-              <p><strong>NRB:</strong> 52003075</p>
-              <p><strong>Email:</strong> gjakova@bonevet.org</p>
-              <p><strong>Tel:</strong> +383 (0) 49 187 800</p>
+              <FormField
+                control={form.control}
+                name="borrowerLegalRep"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Legal Representative (Optional)</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Legal representative name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="borrowerAddress"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Address</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Complete address" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="borrowerPhone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="+383 XX XXX XXX" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="borrowerEmail"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Address</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="email" placeholder="email@example.com" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Equipment List */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Equipment List
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addEquipmentItem}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Equipment
+                </Button>
+              </CardTitle>
+              <CardDescription>
+                Add all equipment items to be included in the loan agreement
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {equipmentList.map((equipment, index) => (
+                <div key={index} className="border rounded-lg p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">Equipment #{index + 1}</h4>
+                    {equipmentList.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeEquipmentItem(index)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Select from Inventory</label>
+                      <Select 
+                        value={equipment.itemId} 
+                        onValueChange={(value) => handleInventoryItemSelect(index, value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select inventory item..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {inventoryItems
+                            .filter(item => item.quantityAvailable > 0)
+                            .map((item) => (
+                              <SelectItem key={item.itemId} value={item.itemId}>
+                                {item.name} ({item.itemId}) - Available: {item.quantityAvailable}
+                              </SelectItem>
+                            ))
+                          }
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Equipment Name</label>
+                      <Input
+                        value={equipment.name}
+                        onChange={(e) => updateEquipmentItem(index, 'name', e.target.value)}
+                        placeholder="Equipment name"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Model/ID</label>
+                      <Input
+                        value={equipment.model}
+                        onChange={(e) => updateEquipmentItem(index, 'model', e.target.value)}
+                        placeholder="Model or ID"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Quantity</label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={equipment.quantity}
+                        onChange={(e) => updateEquipmentItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Initial Condition</label>
+                    <Textarea
+                      value={equipment.initialCondition}
+                      onChange={(e) => updateEquipmentItem(index, 'initialCondition', e.target.value)}
+                      placeholder="Describe the current condition of the equipment"
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Action Buttons */}
+          <div className="flex justify-between">
+            <div className="space-x-2">
+              {generatedDocumentId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleDownload}
+                  disabled={downloadPDFMutation.isPending}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {downloadPDFMutation.isPending ? 'Downloading...' : 'Download PDF'}
+                </Button>
+              )}
             </div>
+            
+            <Button 
+              type="submit" 
+              disabled={generateAgreementMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {generateAgreementMutation.isPending ? 'Generating...' : 'Generate Agreement'}
+            </Button>
           </div>
-          
-          <div>
-            <h3 className="font-bold">Huamarrësi:</h3>
-            <div className="mt-2">
-              <p><strong>Emri / Institucioni:</strong> {form.borrowerName}</p>
-              <p><strong>Nr. Personal / NRB:</strong> {form.borrowerPersonalId}</p>
-              {form.borrowerLegalRep && <p><strong>Përfaqësuesi ligjor:</strong> {form.borrowerLegalRep}</p>}
-              <p><strong>Adresa:</strong> {form.borrowerAddress}</p>
-              <p><strong>Nr. Tel.:</strong> {form.borrowerPhone}</p>
-              <p><strong>Email:</strong> {form.borrowerEmail}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+        </form>
+      </Form>
 
-      <div className="mb-6">
-        <h2 className="font-bold mb-2">Pajisjet e Huazuara:</h2>
-        
-        <table className="w-full border-collapse border border-black">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="border border-black p-2 text-center w-12">Nr</th>
-              <th className="border border-black p-2 text-left">Emri i pajisjes</th>
-              <th className="border border-black p-2 text-left">Modeli/ID</th>
-              <th className="border border-black p-2 text-center w-16">Sasia</th>
-              <th className="border border-black p-2 text-left">Gjendja Fillestare</th>
-            </tr>
-          </thead>
-          <tbody>
-            {form.equipmentList.map((equipment, index) => (
-              <tr key={index}>
-                <td className="border border-black p-2 text-center">{index + 1}</td>
-                <td className="border border-black p-2">{equipment.name}</td>
-                <td className="border border-black p-2">{equipment.model}</td>
-                <td className="border border-black p-2 text-center">{equipment.quantity}</td>
-                <td className="border border-black p-2">{equipment.initialCondition}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mb-6">
-        <h2 className="font-bold mb-2">Kushtet e Marrëveshjes:</h2>
-        
-        <ol className="list-decimal list-inside space-y-2">
-          <li>Pajisjet duhet të kthehen në të njëjtën gjendje siç janë pranuar, sipas përshkrimit të gjendjes fillestare.</li>
-          <li>Huamarrësi është përgjegjës për përdorimin e sigurt dhe mirëmbajtjen bazike të pajisjeve gjatë periudhës së huazimit.</li>
-          <li>Pajisjet nuk mund të huazohen, transferohen apo jepen në përdorim tek persona të tretë pa pëlqimin me shkrim të BONEVET Gjakova.</li>
-          <li>Në rast dëmtimi, humbjeje ose moskthimi, huamarrësi detyrohet të kompensojë dëmin:
-            <ul className="list-disc list-inside ml-4 mt-1">
-              <li>Me pajisje të njëjta ose të ngjashme, në gjendje të barasvlershme, ose</li>
-              <li>Me kompensim financiar, në shumën e përcaktuar nga BONEVET Gjakova.</li>
-            </ul>
-          </li>
-          <li>Afati i kthimit është i detyrueshëm. Për çdo ditë vonesë pa arsyetim të aprovuar me shkrim, huamarrësi i nënshtrohet një penaliteti prej <strong>{form.dailyPenalty} €</strong> në ditë.</li>
-          <li>Pranim-dorëzimi i pajisjeve bëhet me procesverbal në momentin e kthimit.</li>
-          <li>Marrëveshja hyn në fuqi ditën e nënshkrimit dhe mbetet valide deri në kthimin dhe verifikimin e gjendjes së pajisjeve.</li>
-        </ol>
-      </div>
-
-      <div className="mb-6">
-        <p>Çdo mosmarrëveshje që lind nga kjo marrëveshje do të zgjidhet fillimisht me mirëkuptim mes palëve, e në mungesë të saj, me anë të Gjykatës Themelore në Gjakovë.</p>
-      </div>
-
-      <div className="mt-8">
-        <div className="grid grid-cols-2 gap-8">
-          <div>
-            <h3 className="font-bold">Përfaqësuesi i BONEVET Gjakova</h3>
-            <div className="mt-4">
-              <p>Emri: <strong>{form.bonevevRepresentativeName}</strong></p>
-              <div className="mt-8 border-b border-black w-48">
-                <p className="text-center mb-1">Nënshkrimi</p>
+      {/* Preview Section */}
+      {showPreview && generatedDocumentId && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Agreement Generated Successfully</span>
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={handleDownload}
+                  disabled={downloadPDFMutation.isPending}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download PDF
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowPreview(false)}
+                >
+                  Close Preview
+                </Button>
               </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <p className="text-green-800">
+                ✓ The loan agreement has been generated successfully and saved to the Documents section.
+                The inventory quantities have been automatically updated and loan records created.
+              </p>
+              <p className="text-sm text-green-700 mt-2">
+                Document ID: {generatedDocumentId}
+              </p>
             </div>
-          </div>
-          
-          <div>
-            <h3 className="font-bold">Huamarrësi</h3>
-            <div className="mt-4">
-              <p>Emri: <strong>{form.borrowerName}</strong></p>
-              <div className="mt-8 border-b border-black w-48">
-                <p className="text-center mb-1">Nënshkrimi</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

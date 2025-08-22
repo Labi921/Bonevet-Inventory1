@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Download, Search, Package, Users, Eye, FileText } from 'lucide-react';
+import { PlusCircle, Download, Search, Package, Users, Eye, FileText, FileSignature } from 'lucide-react';
 import { format, isAfter, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +50,39 @@ export default function Loans() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const { toast } = useToast();
+  const [, navigate] = useLocation();
+  
+  // Fetch inventory for pre-filling
+  const { data: inventory } = useQuery({
+    queryKey: ['/api/inventory'],
+  });
+  
+  // Generate agreement function for loan groups
+  const handleGenerateGroupAgreement = (group: any) => {
+    const equipmentList = (group.items || []).map((item: any) => {
+      const inventoryItem = inventory?.find((inv: any) => inv.id === item.itemId);
+      return {
+        itemId: inventoryItem?.itemId || '',
+        name: inventoryItem?.name || 'Unknown Item',
+        model: inventoryItem?.itemId || '',
+        quantity: item.quantityLoaned || 1,
+        initialCondition: `Condition: ${inventoryItem?.status || 'Unknown'}`
+      };
+    });
+    
+    const prefillData = {
+      borrowerName: group.borrowerName || '',
+      borrowerType: group.borrowerType || '',
+      borrowerContact: group.borrowerContact || '',
+      loanDate: group.loanDate ? new Date(group.loanDate).toISOString().split('T')[0] : '',
+      returnDate: group.expectedReturnDate ? new Date(group.expectedReturnDate).toISOString().split('T')[0] : '',
+      equipmentList,
+      notes: group.notes || '',
+      prefillSource: 'loan-group'
+    };
+    
+    navigate(`/loan-agreement?prefill=${encodeURIComponent(JSON.stringify(prefillData))}`);
+  };
   
   // Check if we're on a sub-route
   const isNewLoan = location === '/loans/new' || location.startsWith('/loans/new?');
@@ -342,6 +375,16 @@ export default function Loans() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-purple-600 hover:text-purple-700"
+                              onClick={() => handleGenerateGroupAgreement(group)}
+                            >
+                              <FileSignature className="h-4 w-4 mr-1" />
+                              Agreement
+                            </Button>
+                            
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button 

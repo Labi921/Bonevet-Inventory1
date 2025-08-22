@@ -1868,30 +1868,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Update inventory quantities - reduce available, increase loaned
-      for (const update of inventoryUpdates) {
-        const newQuantityLoaned = update.item.quantityLoaned + update.quantityRequested;
-        await storage.updateItemQuantities(
-          update.item.id,
-          newQuantityLoaned,
-          update.item.quantityDamaged
-        );
-        
-        // Log activity for each inventory item
-        await storage.createActivityLog({
-          userId: (req.user as any).id,
-          action: "Loan",
-          entityType: "InventoryItem",
-          entityId: update.item.id.toString(),
-          details: `Loaned ${update.quantityRequested} unit(s) via loan agreement for ${borrowerName}`
-        });
-      }
+      // Create a loan group for this agreement (so items can be managed in Loan tab)
+      const loanGroupData = {
+        borrowerName: borrowerName,
+        borrowerType: "Agreement", // Special type for loan agreements
+        borrowerContact: `${borrowerPhone} | ${borrowerEmail}`,
+        loanDate: loanDate,
+        expectedReturnDate: returnDate,
+        notes: `Loan Agreement: ${borrowerPersonalId} - Generated via Albanian Loan Agreement System`,
+        createdBy: (req.user as any).id
+      };
+      
+      const itemsData = inventoryUpdates.map(update => ({
+        id: update.item.id,
+        quantity: update.quantityRequested
+      }));
+      
+      // Create the loan group (this will automatically create individual loans and update inventory)
+      const loanGroup = await storage.createLoanGroup(loanGroupData, itemsData);
       
       // Create a document record for the generated agreement
       const agreementDocument = await storage.createDocument({
         title: `Loan Agreement - ${borrowerName}`,
-        type: "Loan Agreement",
-        documentId: `LA-${Date.now()}`,
+        type: "Loan Agreement", 
+        documentId: `LA-${loanGroup.loanGroupId}`, // Use loan group ID for consistency
+        relatedItemId: loanGroup.loanGroupId, // Link to the loan group
         content: JSON.stringify({
           loanDate,
           returnDate,
@@ -1903,7 +1904,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           borrowerEmail,
           bonevevRepresentativeName,
           dailyPenalty,
-          equipmentList
+          equipmentList,
+          loanGroupId: loanGroup.loanGroupId // Include reference to loan group
         })
       });
       
