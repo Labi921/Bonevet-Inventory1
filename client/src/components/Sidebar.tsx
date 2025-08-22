@@ -14,6 +14,7 @@ import {
   Settings,
   History,
   LogOut,
+  FileSignature,
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -64,6 +65,7 @@ export default function Sidebar() {
       { path: '/', label: 'Dashboard', icon: <Gauge className="w-5 h-5 mr-2" /> },
       { path: '/inventory', label: 'Inventory', icon: <Package className="w-5 h-5 mr-2" /> },
       { path: '/loans', label: 'Loans', icon: <Handshake className="w-5 h-5 mr-2" /> },
+      { path: '/loan-agreement', label: 'Loan Agreement', icon: <FileSignature className="w-5 h-5 mr-2" /> },
       { path: '/documents', label: 'Documents', icon: <FileText className="w-5 h-5 mr-2" /> },
       { path: '/reports', label: 'Reports', icon: <BarChart className="w-5 h-5 mr-2" /> },
       { path: '/barcode', label: 'Barcode', icon: <QrCode className="w-5 h-5 mr-2" /> },

@@ -23,6 +23,7 @@ import NotFound from "@/pages/not-found";
 import Login from "@/pages/Login";
 import CSVImport from "./components/inventory/CSVImport";
 import CategoryManagement from "@/pages/CategoryManagement";
+import LoanAgreement from "@/pages/LoanAgreement";
 
 function Router() {
   return (
@@ -173,6 +174,14 @@ function Router() {
         <Layout>
           <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
             <BorrowingRequest />
+          </ProtectedRoute>
+        </Layout>
+      </Route>
+      
+      <Route path="/loan-agreement">
+        <Layout>
+          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+            <LoanAgreement />
           </ProtectedRoute>
         </Layout>
       </Route>

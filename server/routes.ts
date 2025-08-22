@@ -1608,6 +1608,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
+  // Loan Agreement Generation endpoint
+  app.post("/api/loan-agreement/generate", requireAuth, async (req, res) => {
+    try {
+      console.log("Loan agreement generation request:", req.body);
+      
+      const {
+        loanDate,
+        returnDate,
+        borrowerName,
+        borrowerPersonalId,
+        borrowerLegalRep,
+        borrowerAddress,
+        borrowerPhone,
+        borrowerEmail,
+        bonevevRepresentativeName,
+        dailyPenalty,
+        equipmentList
+      } = req.body;
+      
+      // Validate required fields
+      if (!loanDate || !returnDate || !borrowerName || !borrowerPersonalId || 
+          !borrowerAddress || !borrowerPhone || !borrowerEmail || 
+          !bonevevRepresentativeName || !Array.isArray(equipmentList) || 
+          equipmentList.length === 0) {
+        return res.status(400).json({ 
+          message: "Missing required fields for loan agreement generation" 
+        });
+      }
+      
+      // Create a document record for the generated agreement
+      const agreementDocument = await storage.createDocument({
+        title: `Loan Agreement - ${borrowerName}`,
+        type: "Loan Agreement",
+        generatedAt: new Date(),
+        generatedBy: (req.user as any).id,
+        content: JSON.stringify({
+          loanDate,
+          returnDate,
+          borrowerName,
+          borrowerPersonalId,
+          borrowerLegalRep,
+          borrowerAddress,
+          borrowerPhone,
+          borrowerEmail,
+          bonevevRepresentativeName,
+          dailyPenalty,
+          equipmentList
+        })
+      });
+      
+      // Log the activity
+      await storage.createActivityLog({
+        userId: (req.user as any).id,
+        action: "Generate",
+        entityType: "Document",
+        entityId: agreementDocument.id.toString(),
+        details: `Generated Albanian loan agreement for ${borrowerName} with ${equipmentList.length} equipment item(s)`
+      });
+      
+      res.json({
+        success: true,
+        message: "Loan agreement generated successfully",
+        documentId: agreementDocument.id,
+        agreementData: {
+          loanDate,
+          returnDate,
+          borrowerName,
+          borrowerPersonalId,
+          borrowerLegalRep,
+          borrowerAddress,
+          borrowerPhone,
+          borrowerEmail,
+          bonevevRepresentativeName,
+          dailyPenalty,
+          equipmentList
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error generating loan agreement:', error);
+      res.status(500).json({ message: "Failed to generate loan agreement" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

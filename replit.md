@@ -10,6 +10,16 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### January 2025 - Albanian Loan Agreement Document System
+- Created comprehensive fillable Albanian loan agreement generator
+- Dynamic equipment table that adjusts based on selected inventory items
+- Pre-fill capability from existing loan records for faster processing
+- Professional document layout with proper Albanian language formatting
+- Print-ready format optimized for physical document signing
+- Integration with existing loan and inventory management systems
+- Document storage and audit logging for generated agreements
+- Role-based access (Admin and Super Admin only)
+
 ### August 2025 - Enhanced Admin Permissions for User Management
 - Updated permission system to allow Admin users to create and manage other users
 - Admin users can now create: Admin, Standard User, and Staff User accounts
