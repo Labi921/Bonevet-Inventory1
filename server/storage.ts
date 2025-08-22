@@ -309,7 +309,15 @@ export class MemStorage implements IStorage {
   }
 
   async listInventoryItems(): Promise<InventoryItem[]> {
-    return Array.from(this.inventoryItems.values());
+    // Update quantities for all items to ensure accurate availability
+    const items = Array.from(this.inventoryItems.values());
+    const updatedItems = await Promise.all(
+      items.map(async item => {
+        const updated = await this.updateItemQuantities(item.itemId);
+        return updated || item;
+      })
+    );
+    return updatedItems;
   }
 
   async updateInventoryItem(id: number, itemData: Partial<InsertInventoryItem>): Promise<InventoryItem | undefined> {
