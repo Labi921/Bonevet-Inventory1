@@ -271,11 +271,18 @@ export default function LoanAgreement() {
     );
   }
 
-  // Check if user has required permissions
-  if (user.role !== 'Admin' && user.role !== 'Super Admin') {
+  // Debug: Log user object to see the actual structure
+  console.log('User object in LoanAgreement:', user);
+
+  // Check if user has required permissions (Admin or Super Admin can generate agreements)
+  if (!user.role || (user.role !== 'admin' && user.role !== 'super_admin')) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-muted-foreground">You don't have permission to generate loan agreements.</p>
+        <div className="text-center">
+          <p className="text-muted-foreground">You don't have permission to generate loan agreements.</p>
+          <p className="text-sm text-gray-500 mt-2">Current role: {user.role || 'No role assigned'}</p>
+          <p className="text-xs text-gray-400 mt-1">Required: admin or super_admin</p>
+        </div>
       </div>
     );
   }
