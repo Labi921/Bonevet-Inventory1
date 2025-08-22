@@ -100,6 +100,9 @@ export default function LoanAgreement() {
     queryKey: ['/api/inventory']
   });
 
+  // Debug inventory data
+  console.log('Inventory items in LoanAgreement:', inventoryItems);
+
   // Fetch existing loans for pre-filling
   const { data: loans = [] } = useQuery<any[]>({
     queryKey: ['/api/loans']
@@ -203,12 +206,26 @@ export default function LoanAgreement() {
 
   // Auto-fill from selected inventory item
   const handleInventoryItemSelect = (index: number, itemId: string) => {
+    console.log('handleInventoryItemSelect called with:', index, itemId);
+    console.log('Available inventory items:', inventoryItems);
+    
+    if (!itemId) {
+      console.log('No itemId provided');
+      return;
+    }
+    
     const selectedItem = inventoryItems.find(item => item.itemId === itemId);
+    console.log('Found selected item:', selectedItem);
+    
     if (selectedItem) {
       updateEquipmentItem(index, 'itemId', itemId);
       updateEquipmentItem(index, 'name', selectedItem.name);
-      updateEquipmentItem(index, 'model', itemId);
-      updateEquipmentItem(index, 'initialCondition', `Condition: ${selectedItem.status || 'Good'} - Available Quantity: ${selectedItem.quantityAvailable}`);
+      updateEquipmentItem(index, 'model', selectedItem.model || selectedItem.itemId);
+      updateEquipmentItem(index, 'initialCondition', `Condition: ${selectedItem.status || 'Good'} - Available Quantity: ${selectedItem.quantityAvailable || 0}`);
+      
+      console.log('Equipment item updated for index:', index);
+    } else {
+      console.log('No item found with itemId:', itemId);
     }
   };
 
@@ -535,21 +552,29 @@ export default function LoanAgreement() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Select from Inventory</label>
                       <Select 
-                        value={equipment.itemId} 
-                        onValueChange={(value) => handleInventoryItemSelect(index, value)}
+                        value={equipment.itemId || ""} 
+                        onValueChange={(value) => {
+                          console.log('Select onValueChange triggered with value:', value);
+                          handleInventoryItemSelect(index, value);
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select inventory item..." />
                         </SelectTrigger>
                         <SelectContent>
                           {inventoryItems
-                            .filter(item => item.quantityAvailable > 0)
+                            .filter(item => (item.quantityAvailable || 0) > 0)
                             .map((item) => (
                               <SelectItem key={item.itemId} value={item.itemId}>
-                                {item.name} ({item.itemId}) - Available: {item.quantityAvailable}
+                                {item.name} ({item.itemId}) - Available: {item.quantityAvailable || 0}
                               </SelectItem>
                             ))
                           }
+                          {inventoryItems.filter(item => (item.quantityAvailable || 0) > 0).length === 0 && (
+                            <SelectItem value="" disabled>
+                              No available items
+                            </SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
