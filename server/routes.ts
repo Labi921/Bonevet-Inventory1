@@ -1609,6 +1609,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Loan Agreement Generation endpoint
+  // Loan Agreement PDF Download endpoint
+  app.get('/api/loan-agreement/:documentId/download', requireAuth, async (req, res) => {
+    try {
+      const { documentId } = req.params;
+      
+      // Get document from storage
+      const documents = await storage.listDocuments();
+      const document = documents.find(doc => doc.id.toString() === documentId);
+      if (!document || document.type !== 'Loan Agreement') {
+        return res.status(404).json({ message: 'Document not found' });
+      }
+
+      const puppeteer = require('puppeteer');
+      
+      // Launch browser and create PDF
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
+      
+      const page = await browser.newPage();
+      
+      // Parse document content and set HTML
+      const agreementData = JSON.parse(document.content);
+      await page.setContent(generateLoanAgreementHTML(agreementData), {
+        waitUntil: 'networkidle0'
+      });
+      
+      // Generate PDF
+      const pdf = await page.pdf({
+        format: 'A4',
+        margin: {
+          top: '20mm',
+          right: '20mm',
+          bottom: '20mm',
+          left: '20mm'
+        },
+        printBackground: true
+      });
+      
+      await browser.close();
+      
+      // Set headers for PDF download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="Loan_Agreement_${documentId}.pdf"`);
+      res.send(pdf);
+      
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      res.status(500).json({ message: 'Failed to generate PDF' });
+    }
+  });
+
   app.post("/api/loan-agreement/generate", requireAuth, async (req, res) => {
     try {
       console.log("Loan agreement generation request:", req.body);
@@ -1694,4 +1747,247 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
   return httpServer;
+}
+
+// HTML generation function for loan agreements
+function generateLoanAgreementHTML(agreementData: any): string {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('sq-AL', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+  };
+
+  const equipmentRows = agreementData.equipmentList.map((item: any, index: number) => `
+    <tr>
+      <td style="border: 1px solid #000; padding: 8px; text-align: center;">${index + 1}</td>
+      <td style="border: 1px solid #000; padding: 8px;">${item.name || ''}</td>
+      <td style="border: 1px solid #000; padding: 8px;">${item.model || ''}</td>
+      <td style="border: 1px solid #000; padding: 8px; text-align: center;">${item.quantity || 1}</td>
+      <td style="border: 1px solid #000; padding: 8px;">${item.initialCondition || ''}</td>
+      <td style="border: 1px solid #000; padding: 8px;"></td>
+    </tr>
+  `).join('');
+
+  return `
+    <!DOCTYPE html>
+    <html lang="sq">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Marrëveshje për Huazimin e Pajisjeve</title>
+      <style>
+        @page {
+          size: A4;
+          margin: 20mm;
+        }
+        
+        body {
+          font-family: Arial, sans-serif;
+          font-size: 12px;
+          line-height: 1.4;
+          color: #000;
+          margin: 0;
+          padding: 0;
+        }
+        
+        .header {
+          text-align: center;
+          margin-bottom: 30px;
+          border-bottom: 2px solid #000;
+          padding-bottom: 15px;
+        }
+        
+        .title {
+          font-size: 18px;
+          font-weight: bold;
+          margin-bottom: 10px;
+        }
+        
+        .subtitle {
+          font-size: 14px;
+          margin-bottom: 5px;
+        }
+        
+        .section {
+          margin-bottom: 20px;
+        }
+        
+        .section-title {
+          font-weight: bold;
+          margin-bottom: 10px;
+          font-size: 13px;
+          text-decoration: underline;
+        }
+        
+        .info-row {
+          margin-bottom: 8px;
+          display: flex;
+          align-items: center;
+        }
+        
+        .info-label {
+          font-weight: bold;
+          min-width: 120px;
+          display: inline-block;
+        }
+        
+        .info-value {
+          border-bottom: 1px solid #000;
+          min-width: 200px;
+          padding-bottom: 2px;
+          margin-left: 10px;
+        }
+        
+        .equipment-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 20px 0;
+        }
+        
+        .equipment-table th,
+        .equipment-table td {
+          border: 1px solid #000;
+          padding: 8px;
+          text-align: left;
+        }
+        
+        .equipment-table th {
+          background-color: #f5f5f5;
+          font-weight: bold;
+          text-align: center;
+        }
+        
+        .signature-section {
+          margin-top: 40px;
+          display: flex;
+          justify-content: space-between;
+        }
+        
+        .signature-box {
+          text-align: center;
+          width: 45%;
+        }
+        
+        .signature-line {
+          border-bottom: 1px solid #000;
+          height: 50px;
+          margin-bottom: 5px;
+        }
+        
+        .terms {
+          margin-top: 30px;
+          font-size: 11px;
+          line-height: 1.3;
+        }
+        
+        .terms-title {
+          font-weight: bold;
+          margin-bottom: 10px;
+          text-decoration: underline;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="title">MARRËVESHJE PËR HUAZIMIN E PAJISJEVE</div>
+        <div class="subtitle">FONDACIONI "BONEVET"</div>
+        <div class="subtitle">Rruga "Fehmi Agani", Kompleksi "Arbëria", Prishtinë</div>
+      </div>
+      
+      <div class="section">
+        <div class="info-row">
+          <span class="info-label">Data e huazimit:</span>
+          <span class="info-value">${formatDate(agreementData.loanDate)}</span>
+          <span style="margin-left: 50px;" class="info-label">Data e kthimit:</span>
+          <span class="info-value">${formatDate(agreementData.returnDate)}</span>
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">TË DHËNAT E HUAMARRËSIT:</div>
+        <div class="info-row">
+          <span class="info-label">Emri i plotë:</span>
+          <span class="info-value">${agreementData.borrowerName}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Nr. i ID-së:</span>
+          <span class="info-value">${agreementData.borrowerPersonalId}</span>
+        </div>
+        ${agreementData.borrowerLegalRep ? `
+        <div class="info-row">
+          <span class="info-label">Përfaqësuesi ligjor:</span>
+          <span class="info-value">${agreementData.borrowerLegalRep}</span>
+        </div>
+        ` : ''}
+        <div class="info-row">
+          <span class="info-label">Adresa:</span>
+          <span class="info-value">${agreementData.borrowerAddress}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Nr. i telefonit:</span>
+          <span class="info-value">${agreementData.borrowerPhone}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Email:</span>
+          <span class="info-value">${agreementData.borrowerEmail}</span>
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">LISTA E PAJISJEVE TË HUAZUARA:</div>
+        <table class="equipment-table">
+          <thead>
+            <tr>
+              <th style="width: 8%;">Nr.</th>
+              <th style="width: 25%;">Emri i pajisjes</th>
+              <th style="width: 20%;">Modeli</th>
+              <th style="width: 12%;">Sasia</th>
+              <th style="width: 25%;">Gjendja fillestare</th>
+              <th style="width: 25%;">Gjendja në kthim</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${equipmentRows}
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="section">
+        <div class="info-row">
+          <span class="info-label">Përfaqësuesi i BONEVET-it:</span>
+          <span class="info-value">${agreementData.bonevevRepresentativeName}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Dënimi ditor (në rast vonese):</span>
+          <span class="info-value">${agreementData.dailyPenalty} EUR</span>
+        </div>
+      </div>
+      
+      <div class="terms">
+        <div class="terms-title">KUSHTET E HUAZIMIT:</div>
+        <p>1. Huamarrësi detyrohet t'i kthejë pajisjet në gjendjen e njëjtë siç i ka marrë, deri në datën e caktuar të kthimit.</p>
+        <p>2. Në rast dëmtimi apo humbjeje së pajisjeve, huamarrësi detyrohet t'i kompensojë ato sipas vlerës së tregut.</p>
+        <p>3. Vonesa në kthim do të penalizohet me ${agreementData.dailyPenalty} EUR për çdo ditë vonesë.</p>
+        <p>4. Pajisjet mund të përdoren vetëm për qëllime edukative dhe jo komerciale.</p>
+        <p>5. Kjo marrëveshje hyn në fuqi me nënshkrimin e të dyja palëve.</p>
+      </div>
+      
+      <div class="signature-section">
+        <div class="signature-box">
+          <div class="signature-line"></div>
+          <div><strong>Nënshkrimi i huamarrësit</strong></div>
+          <div>${agreementData.borrowerName}</div>
+        </div>
+        <div class="signature-box">
+          <div class="signature-line"></div>
+          <div><strong>Nënshkrimi i përfaqësuesit të BONEVET-it</strong></div>
+          <div>${agreementData.bonevevRepresentativeName}</div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
 }

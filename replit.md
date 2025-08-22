@@ -10,15 +10,18 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### January 2025 - Albanian Loan Agreement Document System
-- Created comprehensive fillable Albanian loan agreement generator
+### January 2025 - Albanian Loan Agreement Document System with PDF Download
+- Created comprehensive fillable Albanian loan agreement generator with PDF export capability
 - Dynamic equipment table that adjusts based on selected inventory items
 - Pre-fill capability from existing loan records for faster processing
-- Professional document layout with proper Albanian language formatting
-- Print-ready format optimized for physical document signing
+- Professional document layout with proper Albanian language formatting optimized for A4 printing
+- **PDF Download Functionality**: Automatic PDF generation using Puppeteer for professional document output
+- **Document Management Integration**: Generated agreements automatically saved in Documents section with download buttons
+- Print-ready format optimized for physical document signing with proper margins and styling
 - Integration with existing loan and inventory management systems
 - Document storage and audit logging for generated agreements
 - Role-based access (Admin and Super Admin only)
+- Complete workflow: Generate → Preview → Download PDF → Store in Documents library
 
 ### August 2025 - Enhanced Admin Permissions for User Management
 - Updated permission system to allow Admin users to create and manage other users

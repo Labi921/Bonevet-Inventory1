@@ -76,6 +76,7 @@ export default function LoanAgreement() {
   ]);
   const [selectedLoan, setSelectedLoan] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [generatedDocumentId, setGeneratedDocumentId] = useState<number | null>(null);
 
   // Fetch available inventory items
   const { data: inventoryItems = [] } = useQuery<InventoryItem[]>({
@@ -115,7 +116,10 @@ export default function LoanAgreement() {
         title: "Agreement Generated",
         description: "Loan agreement has been generated successfully."
       });
+      setGeneratedDocumentId(data.documentId);
       setShowPreview(true);
+      // Invalidate documents query to refresh the Documents section
+      queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
     },
     onError: (error: any) => {
       toast({
@@ -125,6 +129,51 @@ export default function LoanAgreement() {
       });
     }
   });
+
+  // Download PDF function
+  const downloadPDF = async () => {
+    if (!generatedDocumentId) {
+      toast({
+        title: "No Document",
+        description: "Please generate an agreement first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/loan-agreement/${generatedDocumentId}/download`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `Loan_Agreement_${generatedDocumentId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Download Started",
+        description: "PDF download has started successfully."
+      });
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: "Failed to download the PDF document.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const addEquipmentRow = () => {
     const newEquipment: EquipmentItem = {
@@ -528,14 +577,28 @@ export default function LoanAgreement() {
                   />
                 </div>
 
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={generateAgreementMutation.isPending}
-                  data-testid="button-generate-agreement"
-                >
-                  {generateAgreementMutation.isPending ? 'Generating...' : 'Generate Agreement'}
-                </Button>
+                <div className="flex gap-4">
+                  <Button 
+                    type="submit" 
+                    className="flex-1" 
+                    disabled={generateAgreementMutation.isPending}
+                    data-testid="button-generate-agreement"
+                  >
+                    {generateAgreementMutation.isPending ? 'Generating...' : 'Generate Agreement'}
+                  </Button>
+                  
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={downloadPDF}
+                    disabled={!generatedDocumentId}
+                    data-testid="button-download-pdf"
+                    className="flex items-center gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download PDF
+                  </Button>
+                </div>
               </form>
             </Form>
           </CardContent>

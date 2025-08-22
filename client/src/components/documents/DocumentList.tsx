@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { format } from 'date-fns';
-import { FileText, Eye, Pen, FileSignature } from 'lucide-react';
+import { FileText, Eye, Pen, FileSignature, Download } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -82,6 +82,42 @@ export default function DocumentList({ documents, isLoading }: DocumentListProps
   // Handle sign document
   const handleSignDocument = (id: number) => {
     signDocument.mutate(id);
+  };
+
+  // Download PDF function for loan agreements
+  const downloadLoanAgreementPDF = async (documentId: string) => {
+    try {
+      const response = await fetch(`/api/loan-agreement/${documentId}/download`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `Loan_Agreement_${documentId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Download Started",
+        description: "PDF download has started successfully."
+      });
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: "Failed to download the PDF document.",
+        variant: "destructive"
+      });
+    }
   };
   
   // Check if user already signed a document
@@ -178,6 +214,18 @@ export default function DocumentList({ documents, isLoading }: DocumentListProps
                         <Eye className="h-4 w-4 mr-2" />
                         View
                       </Button>
+                      
+                      {doc.type === 'Loan Agreement' && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => downloadLoanAgreementPDF(doc.id)}
+                          className="text-green-600 hover:text-green-700"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          PDF
+                        </Button>
+                      )}
                       
                       {!isDocumentSignedByUser(doc) ? (
                         <AlertDialog>
