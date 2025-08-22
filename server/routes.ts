@@ -1621,40 +1621,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Document not found' });
       }
 
-      const puppeteer = require('puppeteer');
-      
-      // Launch browser and create PDF
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-      });
-      
-      const page = await browser.newPage();
-      
-      // Parse document content and set HTML
+      // Parse document content
       const agreementData = JSON.parse(document.content);
-      await page.setContent(generateLoanAgreementHTML(agreementData), {
-        waitUntil: 'networkidle0'
+      
+      // Use PDFKit for better PDF generation
+      const PDFDocument = (await import('pdfkit')).default;
+      const doc = new PDFDocument({ size: 'A4', margin: 50 });
+      
+      // Collect PDF data in buffer
+      const buffers: Buffer[] = [];
+      doc.on('data', buffers.push.bind(buffers));
+      
+      // Generate PDF content
+      doc.fontSize(20).text('MARRËVESHJE PËR HUAZIMIN E PAJISJEVE', { align: 'center' });
+      doc.moveDown();
+      
+      doc.fontSize(12);
+      doc.text(`Data e huazimit: ${agreementData.loanDate}`);
+      doc.text(`Data e kthimit: ${agreementData.returnDate}`);
+      doc.text(`Huazuesi: ${agreementData.borrowerName}`);
+      doc.text(`Nr. Personal: ${agreementData.borrowerPersonalId}`);
+      doc.text(`Adresa: ${agreementData.borrowerAddress}`);
+      doc.text(`Telefoni: ${agreementData.borrowerPhone}`);
+      doc.text(`Email: ${agreementData.borrowerEmail}`);
+      doc.moveDown();
+      
+      doc.text('PAJISJET:');
+      doc.moveDown(0.5);
+      
+      // Add equipment list
+      agreementData.equipmentList.forEach((item: any, index: number) => {
+        doc.text(`${index + 1}. ${item.name} (${item.model}) - Sasia: ${item.quantity}`);
+        doc.text(`   Gjendja fillestare: ${item.initialCondition}`);
+        doc.moveDown(0.3);
       });
       
-      // Generate PDF
-      const pdf = await page.pdf({
-        format: 'A4',
-        margin: {
-          top: '20mm',
-          right: '20mm',
-          bottom: '20mm',
-          left: '20mm'
-        },
-        printBackground: true
-      });
+      doc.moveDown();
+      doc.text(`Përfaqësuesi i BONEVET: ${agreementData.bonevevRepresentativeName}`);
+      doc.text(`Gjoba ditore: ${agreementData.dailyPenalty}€`);
       
-      await browser.close();
+      // Finish the PDF
+      doc.end();
+      
+      // Create promise to wait for PDF completion
+      const pdfBuffer = await new Promise<Buffer>((resolve) => {
+        doc.on('end', () => {
+          resolve(Buffer.concat(buffers));
+        });
+      });
+
       
       // Set headers for PDF download
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="Loan_Agreement_${documentId}.pdf"`);
-      res.send(pdf);
+      res.send(pdfBuffer);
       
     } catch (error) {
       console.error('Error generating PDF:', error);

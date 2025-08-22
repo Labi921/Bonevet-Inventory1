@@ -22,6 +22,9 @@ Preferred communication style: Simple, everyday language.
 - Document storage and audit logging for generated agreements
 - Role-based access (Admin and Super Admin only)
 - Complete workflow: Generate → Preview → Download PDF → Store in Documents library
+- **Technical Implementation**: Uses PDFKit for reliable PDF generation without browser dependencies
+- **System Integration**: PDF download endpoints work from both Loan Agreement forms and Documents section
+- **Production Ready**: Fully tested PDF generation with proper Albanian text formatting and document structure
 
 ### August 2025 - Enhanced Admin Permissions for User Management
 - Updated permission system to allow Admin users to create and manage other users
