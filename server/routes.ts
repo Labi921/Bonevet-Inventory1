@@ -1632,33 +1632,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const buffers: Buffer[] = [];
       doc.on('data', buffers.push.bind(buffers));
       
-      // Generate PDF content
-      doc.fontSize(20).text('MARRËVESHJE PËR HUAZIMIN E PAJISJEVE', { align: 'center' });
-      doc.moveDown();
+      // Generate complete Albanian loan agreement PDF
+      const margin = 50;
+      const pageWidth = 595; // A4 width in points
+      const contentWidth = pageWidth - (margin * 2);
       
-      doc.fontSize(12);
-      doc.text(`Data e huazimit: ${agreementData.loanDate}`);
-      doc.text(`Data e kthimit: ${agreementData.returnDate}`);
-      doc.text(`Huazuesi: ${agreementData.borrowerName}`);
-      doc.text(`Nr. Personal: ${agreementData.borrowerPersonalId}`);
+      // Header
+      doc.fontSize(18).font('Helvetica-Bold')
+         .text('MARRËVESHJE PËR HUAZIMIN E PAJISJEVE', { align: 'center' });
+      doc.moveDown(0.8);
+      
+      doc.fontSize(14).font('Helvetica-Bold')
+         .text('BONEVET Foundation', { align: 'center' });
+      doc.moveDown(1.5);
+      
+      // Basic Information Section
+      doc.fontSize(12).font('Helvetica');
+      doc.text('INFORMACIONET THEMELORE:', { underline: true });
+      doc.moveDown(0.5);
+      
+      const leftColumn = margin;
+      const rightColumn = margin + (contentWidth / 2);
+      let currentY = doc.y;
+      
+      // Left column
+      doc.text(`Data e huazimit: ${agreementData.loanDate}`, leftColumn, currentY);
+      doc.text(`Data e kthimit: ${agreementData.returnDate}`, leftColumn);
+      doc.text(`Gjoba ditore: ${agreementData.dailyPenalty}€`, leftColumn);
+      
+      // Right column  
+      doc.text(`Përfaqësuesi i BONEVET:`, rightColumn, currentY);
+      doc.text(`${agreementData.bonevevRepresentativeName}`, rightColumn);
+      
+      doc.moveDown(1.5);
+      
+      // Borrower Information
+      doc.fontSize(12).font('Helvetica-Bold');
+      doc.text('INFORMACIONET E HUAZUESIT:', { underline: true });
+      doc.moveDown(0.5);
+      
+      doc.font('Helvetica');
+      doc.text(`Emri i plotë: ${agreementData.borrowerName}`);
+      doc.text(`Numri personal: ${agreementData.borrowerPersonalId}`);
+      if (agreementData.borrowerLegalRep) {
+        doc.text(`Përfaqësues ligjor: ${agreementData.borrowerLegalRep}`);
+      }
       doc.text(`Adresa: ${agreementData.borrowerAddress}`);
       doc.text(`Telefoni: ${agreementData.borrowerPhone}`);
       doc.text(`Email: ${agreementData.borrowerEmail}`);
-      doc.moveDown();
+      doc.moveDown(1.5);
       
-      doc.text('PAJISJET:');
+      // Equipment Table
+      doc.fontSize(12).font('Helvetica-Bold');
+      doc.text('LISTA E PAJISJEVE:', { underline: true });
       doc.moveDown(0.5);
       
-      // Add equipment list
+      // Table header
+      doc.font('Helvetica-Bold').fontSize(10);
+      const tableTop = doc.y;
+      const colWidths = [30, 150, 80, 50, 120];
+      const colPositions = [
+        leftColumn,
+        leftColumn + colWidths[0],
+        leftColumn + colWidths[0] + colWidths[1],
+        leftColumn + colWidths[0] + colWidths[1] + colWidths[2],
+        leftColumn + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3]
+      ];
+      
+      doc.text('Nr.', colPositions[0], tableTop);
+      doc.text('Emri i pajisjes', colPositions[1], tableTop);
+      doc.text('Modeli', colPositions[2], tableTop);
+      doc.text('Sasia', colPositions[3], tableTop);
+      doc.text('Gjendja fillestare', colPositions[4], tableTop);
+      
+      // Table separator line
+      doc.moveDown(0.3);
+      doc.moveTo(leftColumn, doc.y)
+         .lineTo(leftColumn + contentWidth - 50, doc.y)
+         .stroke();
+      doc.moveDown(0.3);
+      
+      // Equipment rows
+      doc.font('Helvetica').fontSize(10);
       agreementData.equipmentList.forEach((item: any, index: number) => {
-        doc.text(`${index + 1}. ${item.name} (${item.model}) - Sasia: ${item.quantity}`);
-        doc.text(`   Gjendja fillestare: ${item.initialCondition}`);
+        const rowY = doc.y;
+        doc.text(`${index + 1}`, colPositions[0], rowY);
+        doc.text(item.name, colPositions[1], rowY);
+        doc.text(item.model, colPositions[2], rowY);
+        doc.text(item.quantity.toString(), colPositions[3], rowY);
+        doc.text(item.initialCondition, colPositions[4], rowY);
+        doc.moveDown(0.5);
+      });
+      
+      doc.moveDown(1);
+      
+      // Terms and Conditions
+      doc.fontSize(12).font('Helvetica-Bold');
+      doc.text('KUSHTET E MARRËVESHJES:', { underline: true });
+      doc.moveDown(0.5);
+      
+      doc.font('Helvetica').fontSize(10);
+      const terms = [
+        '1. Huazuesi merr përgjegjësinë e plotë për ruajtjen dhe kthimin e pajisjeve në gjendje të mirë.',
+        '2. Çdo dëmtim i pajisjeve do të kompensohet nga huazuesi sipas vlerës së tregut.',
+        '3. Pajisjet duhet të kthehen në datën e specifikuar. Vonesa do të penalizohet me gjobë ditore.',
+        '4. Huazuesi nuk ka të drejtë t\'i japë pajisjet palëve të treta pa lejen e BONEVET.',
+        '5. Kjo marrëveshje është e vlefshme vetëm pasi të nënshkruhet nga të dyja palët.'
+      ];
+      
+      terms.forEach(term => {
+        doc.text(term, { width: contentWidth - 50, align: 'justify' });
         doc.moveDown(0.3);
       });
       
-      doc.moveDown();
-      doc.text(`Përfaqësuesi i BONEVET: ${agreementData.bonevevRepresentativeName}`);
-      doc.text(`Gjoba ditore: ${agreementData.dailyPenalty}€`);
+      doc.moveDown(1.5);
+      
+      // Signature Section
+      doc.fontSize(12).font('Helvetica-Bold');
+      doc.text('NËNSHKRIMET:', { underline: true });
+      doc.moveDown(1);
+      
+      doc.font('Helvetica').fontSize(11);
+      const signatureY = doc.y;
+      
+      // Left signature
+      doc.text('Huazuesi:', leftColumn, signatureY);
+      doc.text('_________________________', leftColumn, signatureY + 30);
+      doc.text(agreementData.borrowerName, leftColumn, signatureY + 50);
+      doc.text(`Data: ${agreementData.loanDate}`, leftColumn, signatureY + 65);
+      
+      // Right signature  
+      doc.text('Përfaqësuesi i BONEVET:', rightColumn, signatureY);
+      doc.text('_________________________', rightColumn, signatureY + 30);
+      doc.text(agreementData.bonevevRepresentativeName, rightColumn, signatureY + 50);
+      doc.text(`Data: ${agreementData.loanDate}`, rightColumn, signatureY + 65);
+      
+      doc.moveDown(3);
+      
+      // Footer
+      doc.fontSize(8).font('Helvetica');
+      doc.text('BONEVET Foundation - Prishtinë, Kosovë', { align: 'center' });
+      doc.text('Tel: +383 38 224 967 | Email: info@bonevet.org', { align: 'center' });
       
       // Finish the PDF
       doc.end();

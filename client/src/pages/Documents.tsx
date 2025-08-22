@@ -33,9 +33,10 @@ export default function Documents() {
   
   // Filter documents based on search term and type filter
   const filteredDocuments = documents ? documents.filter((doc: any) => {
-    // Search term filter
+    // Search term filter - handle both id and documentId fields
+    const docIdentifier = doc.documentId || doc.id?.toString() || '';
     const matchesSearch = 
-      doc.documentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      docIdentifier.toLowerCase().includes(searchTerm.toLowerCase()) ||
       doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (doc.relatedItemId && doc.relatedItemId.toLowerCase().includes(searchTerm.toLowerCase()));
     
