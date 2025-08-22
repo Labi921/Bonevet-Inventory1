@@ -25,7 +25,7 @@ Preferred communication style: Simple, everyday language.
 - **Technical Implementation**: Uses PDFKit for reliable PDF generation without browser dependencies
 - **System Integration**: PDF download endpoints work from both Loan Agreement forms and Documents section
 - **Production Ready**: Fully tested PDF generation with proper Albanian text formatting and document structure
-- **Enhanced PDF Format**: Professional layout includes header, two-column information sections, equipment table, terms and conditions, signature areas, and contact footer
+- **Enhanced PDF Format**: Professional layout exactly matching HTML preview with centered header, two-column contracting parties section, bordered equipment table with gray headers, complete 7-term Albanian conditions, and proper signature grid layout
 - **Document Section**: Fixed filtering errors and improved document identifier handling for reliable document management
 
 ### August 2025 - Enhanced Admin Permissions for User Management
