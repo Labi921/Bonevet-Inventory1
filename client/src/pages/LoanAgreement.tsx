@@ -107,7 +107,8 @@ export default function LoanAgreement() {
   // Generate loan agreement mutation
   const generateAgreementMutation = useMutation({
     mutationFn: async (data: LoanAgreementForm) => {
-      return apiRequest('/api/loan-agreement/generate', 'POST', data);
+      const response = await apiRequest('POST', '/api/loan-agreement/generate', data);
+      return await response.json();
     },
     onSuccess: (data) => {
       toast({
