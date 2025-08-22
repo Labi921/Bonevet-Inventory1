@@ -5,6 +5,7 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import MemoryStore from "memorystore";
 import { storage } from "./storage";
+import type { InventoryItem } from "../shared/schema";
 import { 
   insertUserSchema, 
   insertInventoryItemSchema, 
@@ -816,7 +817,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json(updatedItem);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error marking item as damaged:', error);
       res.status(500).json({ message: error.message || "Failed to mark item as damaged" });
     }
@@ -848,7 +849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json(updatedItem);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error marking item as repaired:', error);
       res.status(500).json({ message: error.message || "Failed to mark item as repaired" });
     }
@@ -888,7 +889,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json(updatedItem);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating item lifecycle:', error);
       res.status(500).json({ message: error.message || "Failed to update item lifecycle" });
     }
@@ -977,7 +978,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create the loan group with quantities
       const loanGroup = await storage.createLoanGroup(
-        { ...loanGroupData, createdBy: (req.user as any).id }, 
+        loanGroupData, 
         itemsData
       );
       
@@ -1125,11 +1126,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Add individual loans
       individualLoans.forEach(loan => {
+        const inventory = Array.from(storage.inventoryItems.values()).find(item => item.id === loan.itemId);
         csvRows.push([
           'Individual',
           loan.id || '',
           loan.itemId || '',
-          `"${(loan.itemName || '').replace(/"/g, '""')}"`,
+          `"${(inventory?.name || 'Unknown Item').replace(/"/g, '""')}"`,
           `"${(loan.borrowerName || '').replace(/"/g, '""')}"`,
           `"${(loan.borrowerContact || '').replace(/"/g, '""')}"`,
           loan.loanDate ? new Date(loan.loanDate).toLocaleDateString() : '',
@@ -1143,7 +1145,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add loan groups
       loanGroups.forEach(group => {
         const itemNames = Array.isArray(group.items) 
-          ? group.items.map(item => item.name).join('; ')
+          ? group.items.map(item => {
+              const inventory = Array.from(storage.inventoryItems.values()).find(inv => inv.id === item.itemId);
+              return inventory?.name || 'Unknown Item';
+            }).join('; ')
           : 'Multiple Items';
         
         csvRows.push([
@@ -1155,7 +1160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           `"${(group.borrowerContact || '').replace(/"/g, '""')}"`,
           group.loanDate ? new Date(group.loanDate).toLocaleDateString() : '',
           group.expectedReturnDate ? new Date(group.expectedReturnDate).toLocaleDateString() : '',
-          group.actualReturnDate ? new Date(group.actualReturnDate).toLocaleDateString() : '',
+          group.returnDate ? new Date(group.returnDate).toLocaleDateString() : '',
           group.status || '',
           `"${(group.notes || '').replace(/"/g, '""')}"`
         ].join(','));
@@ -1332,8 +1337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           itemDetails: item,
           loanDetails: loan
         }),
-        signedBy: [],
-        createdBy: (req.user as any).id
+        signedBy: []
       });
       
       // Log the activity
@@ -1799,7 +1803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Content-Disposition', `attachment; filename="Loan_Agreement_${documentId}.pdf"`);
       res.send(pdfBuffer);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating PDF:', error);
       res.status(500).json({ message: 'Failed to generate PDF' });
     }
@@ -1833,12 +1837,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Validate equipment availability and reduce inventory quantities
+      const inventoryUpdates: { itemId: string; quantityRequested: number; item: InventoryItem }[] = [];
+      
+      for (const equipment of equipmentList) {
+        if (!equipment.itemId) {
+          return res.status(400).json({ 
+            message: `Equipment item missing itemId: ${equipment.name}` 
+          });
+        }
+        
+        const inventoryItem = await storage.getInventoryItemByItemId(equipment.itemId);
+        if (!inventoryItem) {
+          return res.status(404).json({ 
+            message: `Inventory item not found: ${equipment.itemId}` 
+          });
+        }
+        
+        const quantityRequested = equipment.quantity || 1;
+        if (inventoryItem.quantityAvailable < quantityRequested) {
+          return res.status(400).json({ 
+            message: `Insufficient quantity available for ${inventoryItem.name}. Available: ${inventoryItem.quantityAvailable}, Requested: ${quantityRequested}` 
+          });
+        }
+        
+        inventoryUpdates.push({
+          itemId: equipment.itemId,
+          quantityRequested,
+          item: inventoryItem
+        });
+      }
+      
+      // Update inventory quantities - reduce available, increase loaned
+      for (const update of inventoryUpdates) {
+        const newQuantityLoaned = update.item.quantityLoaned + update.quantityRequested;
+        await storage.updateItemQuantities(
+          update.item.id,
+          newQuantityLoaned,
+          update.item.quantityDamaged
+        );
+        
+        // Log activity for each inventory item
+        await storage.createActivityLog({
+          userId: (req.user as any).id,
+          action: "Loan",
+          entityType: "InventoryItem",
+          entityId: update.item.id.toString(),
+          details: `Loaned ${update.quantityRequested} unit(s) via loan agreement for ${borrowerName}`
+        });
+      }
+      
       // Create a document record for the generated agreement
       const agreementDocument = await storage.createDocument({
         title: `Loan Agreement - ${borrowerName}`,
         type: "Loan Agreement",
-        generatedAt: new Date(),
-        generatedBy: (req.user as any).id,
+        documentId: `LA-${Date.now()}`,
         content: JSON.stringify({
           loanDate,
           returnDate,
@@ -1860,7 +1913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: "Generate",
         entityType: "Document",
         entityId: agreementDocument.id.toString(),
-        details: `Generated Albanian loan agreement for ${borrowerName} with ${equipmentList.length} equipment item(s)`
+        details: `Generated Albanian loan agreement for ${borrowerName} with ${equipmentList.length} equipment item(s) and reduced inventory quantities`
       });
       
       res.json({
@@ -1882,7 +1935,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating loan agreement:', error);
       res.status(500).json({ message: "Failed to generate loan agreement" });
     }
