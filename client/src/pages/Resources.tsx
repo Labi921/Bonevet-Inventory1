@@ -236,13 +236,23 @@ export default function Resources() {
     mutationFn: async (data: CategoryFormData) => {
       return await apiRequest('POST', '/api/resource-categories', data);
     },
-    onSuccess: () => {
+    onSuccess: (newCategory) => {
       toast({
         title: 'Success',
-        description: 'Category created successfully',
+        description: `Category "${newCategory.name}" created successfully`,
       });
+      // Invalidate both resource categories and resources to update the tabs
       queryClient.invalidateQueries({ queryKey: ['/api/resource-categories'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/resources'] });
       setIsCategoryManagerOpen(false);
+      categoryForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create category',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -250,13 +260,22 @@ export default function Resources() {
     mutationFn: async ({ id, data }: { id: number, data: Partial<CategoryFormData> }) => {
       return await apiRequest('PUT', `/api/resource-categories/${id}`, data);
     },
-    onSuccess: () => {
+    onSuccess: (updatedCategory) => {
       toast({
         title: 'Success',
-        description: 'Category updated successfully',
+        description: `Category "${updatedCategory.name}" updated successfully`,
       });
+      // Invalidate both resource categories and resources to update the tabs
       queryClient.invalidateQueries({ queryKey: ['/api/resource-categories'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/resources'] });
       setEditingCategory(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update category',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -269,7 +288,18 @@ export default function Resources() {
         title: 'Success',
         description: 'Category deleted successfully',
       });
+      // Invalidate both resource categories and resources to update the tabs
       queryClient.invalidateQueries({ queryKey: ['/api/resource-categories'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/resources'] });
+      // Reset to "all" tab if we were on a deleted category
+      setActiveTab('all');
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete category',
+        variant: 'destructive',
+      });
     },
   });
 

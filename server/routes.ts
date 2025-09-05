@@ -465,8 +465,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const categoryData = req.body;
       const category = await storage.createResourceCategory(categoryData);
       res.status(201).json(category);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating resource category:', error);
+      
+      // Handle duplicate name constraint
+      if (error.code === '23505' && error.constraint === 'resource_categories_name_unique') {
+        return res.status(400).json({ 
+          message: `Category "${categoryData.name}" already exists. Please choose a different name.` 
+        });
+      }
+      
       res.status(500).json({ message: 'Failed to create resource category' });
     }
   });
