@@ -51,6 +51,23 @@ const upload = multer({
   }
 });
 
+// Separate multer configuration for PDF uploads in resources
+const uploadPDF = multer({ 
+  storage: storage_config,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit for PDFs
+  fileFilter: (req, file, cb) => {
+    const filetypes = /pdf/;
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = /application\/pdf/.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only PDF files are allowed'));
+    }
+  }
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Serve uploaded images
   app.use('/uploads', express.static('uploads'));
@@ -334,14 +351,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/resources", requireAdmin, async (req, res) => {
+  app.post("/api/resources", requireAdmin, uploadPDF.single('pdfFile'), async (req, res) => {
     try {
       const user = req.user as any;
-      const validatedData = insertResourceSchema.parse({
-        ...req.body,
-        uploadedBy: user.id
-      });
+      const resourceData = { ...req.body, uploadedBy: user.id };
       
+      // Add file path if PDF uploaded
+      if (req.file) {
+        resourceData.fileUrl = `/uploads/${req.file.filename}`;
+      }
+      
+      const validatedData = insertResourceSchema.parse(resourceData);
       const resource = await storage.createResource(validatedData);
       res.status(201).json(resource);
     } catch (error) {
@@ -353,10 +373,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/resources/:id", requireAdmin, async (req, res) => {
+  app.put("/api/resources/:id", requireAdmin, uploadPDF.single('pdfFile'), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const validatedData = insertResourceSchema.partial().parse(req.body);
+      const updateData = { ...req.body };
+      
+      // Add file path if PDF uploaded
+      if (req.file) {
+        updateData.fileUrl = `/uploads/${req.file.filename}`;
+      }
+      
+      const validatedData = insertResourceSchema.partial().parse(updateData);
       const resource = await storage.updateResource(id, validatedData);
       
       if (!resource) {

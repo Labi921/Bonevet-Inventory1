@@ -35,6 +35,7 @@ const resourceSchema = z.object({
   videoUrl: z.string().url('Valid YouTube URL required').optional().or(z.literal('')),
   category: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  pdfFile: z.any().optional(), // For file uploads
 });
 
 type ResourceFormData = z.infer<typeof resourceSchema>;
@@ -83,7 +84,29 @@ export default function Resources() {
   // Create resource mutation
   const createMutation = useMutation({
     mutationFn: async (data: ResourceFormData) => {
-      return await apiRequest('POST', '/api/resources', data);
+      const formData = new FormData();
+      
+      // Add text fields
+      Object.entries(data).forEach(([key, value]) => {
+        if (key === 'pdfFile' && value instanceof File) {
+          formData.append('pdfFile', value);
+        } else if (key !== 'pdfFile' && value !== undefined && value !== '') {
+          formData.append(key, String(value));
+        }
+      });
+
+      const response = await fetch('/api/resources', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create resource');
+      }
+
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -92,6 +115,7 @@ export default function Resources() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/resources'] });
       setIsCreateOpen(false);
+      createForm.reset();
     },
     onError: (error: any) => {
       toast({
@@ -105,7 +129,29 @@ export default function Resources() {
   // Update resource mutation
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<ResourceFormData> }) => {
-      return await apiRequest('PUT', `/api/resources/${id}`, data);
+      const formData = new FormData();
+      
+      // Add text fields
+      Object.entries(data).forEach(([key, value]) => {
+        if (key === 'pdfFile' && value instanceof File) {
+          formData.append('pdfFile', value);
+        } else if (key !== 'pdfFile' && value !== undefined && value !== '') {
+          formData.append(key, String(value));
+        }
+      });
+
+      const response = await fetch(`/api/resources/${id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update resource');
+      }
+
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -334,6 +380,31 @@ export default function Resources() {
                       )}
                     />
                   </div>
+                  <FormField
+                    control={createForm.control}
+                    name="pdfFile"
+                    render={({ field: { onChange, ...field } }) => (
+                      <FormItem>
+                        <FormLabel>Upload PDF File (Alternative to URL)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="file"
+                            accept=".pdf"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              onChange(file);
+                            }}
+                            data-testid="input-pdf-file"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                        <p className="text-sm text-gray-500">
+                          Upload a PDF file if you don't have a URL. Max size: 10MB.
+                        </p>
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={createForm.control}
                     name="category"
@@ -608,6 +679,31 @@ export default function Resources() {
                   )}
                 />
               </div>
+              <FormField
+                control={editForm.control}
+                name="pdfFile"
+                render={({ field: { onChange, ...field } }) => (
+                  <FormItem>
+                    <FormLabel>Upload New PDF File (Optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          onChange(file);
+                        }}
+                        data-testid="input-pdf-file-edit"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    <p className="text-sm text-gray-500">
+                      Upload a PDF file to replace existing URL. Max size: 10MB.
+                    </p>
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={editForm.control}
                 name="category"
