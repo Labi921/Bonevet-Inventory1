@@ -77,7 +77,7 @@ export default function Resources() {
   const [activeTab, setActiveTab] = useState('all');
 
   // Fetch resources
-  const { data: resources = [], isLoading, refetch } = useQuery<Resource[]>({
+  const { data: resources = [], isLoading } = useQuery<Resource[]>({
     queryKey: ['/api/resources'],
     staleTime: 0, // Always refetch
     gcTime: 0, // Don't cache (renamed from cacheTime)
@@ -119,8 +119,9 @@ export default function Resources() {
         title: 'Success',
         description: `Resource "${newResource.title}" created successfully`,
       });
-      // Force refetch instead of just invalidating
-      await refetch();
+      // Use queryClient to invalidate and refetch immediately
+      await queryClient.invalidateQueries({ queryKey: ['/api/resources'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/resources'] });
       setIsCreateOpen(false);
       createForm.reset();
       // Switch to the 'all' tab to show the newly created resource
