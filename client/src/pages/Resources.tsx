@@ -383,7 +383,7 @@ export default function Resources() {
                   <FormField
                     control={createForm.control}
                     name="pdfFile"
-                    render={({ field: { onChange, ...field } }) => (
+                    render={({ field: { onChange, value, ...field } }) => (
                       <FormItem>
                         <FormLabel>Upload PDF File (Alternative to URL)</FormLabel>
                         <FormControl>
@@ -682,7 +682,7 @@ export default function Resources() {
               <FormField
                 control={editForm.control}
                 name="pdfFile"
-                render={({ field: { onChange, ...field } }) => (
+                render={({ field: { onChange, value, ...field } }) => (
                   <FormItem>
                     <FormLabel>Upload New PDF File (Optional)</FormLabel>
                     <FormControl>
