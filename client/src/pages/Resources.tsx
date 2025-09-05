@@ -80,7 +80,7 @@ export default function Resources() {
   const { data: resources = [], isLoading, refetch } = useQuery<Resource[]>({
     queryKey: ['/api/resources'],
     staleTime: 0, // Always refetch
-    cacheTime: 0, // Don't cache
+    gcTime: 0, // Don't cache (renamed from cacheTime)
   });
 
   // Create resource mutation
@@ -262,13 +262,13 @@ export default function Resources() {
     }
   };
 
-  const filteredResources = resources.filter(resource => {
+  const filteredResources = (resources || []).filter((resource: Resource) => {
     if (activeTab === 'all') return true;
     return resource.type === activeTab;
   });
 
   // Add debugging info
-  console.log('Total resources:', resources.length);
+  console.log('Total resources:', (resources || []).length);
   console.log('Active tab:', activeTab);
   console.log('Filtered resources:', filteredResources.length);
   console.log('Resources data:', resources);
@@ -476,7 +476,7 @@ export default function Resources() {
             </div>
           ) : filteredResources.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredResources.map((resource) => {
+              {filteredResources.map((resource: Resource) => {
                 const IconComponent = RESOURCE_TYPE_ICONS[resource.type as keyof typeof RESOURCE_TYPE_ICONS];
                 return (
                   <Card key={resource.id} className="group hover:shadow-lg transition-shadow">
