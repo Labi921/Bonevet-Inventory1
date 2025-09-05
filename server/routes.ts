@@ -356,18 +356,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as any;
       const resourceData = { ...req.body, uploadedBy: user.id };
       
-      console.log("Raw resourceData:", resourceData);
-      console.log("Tags field type:", typeof resourceData.tags, "Value:", resourceData.tags);
-      
       // Parse tags if it's a JSON string
       if (resourceData.tags && typeof resourceData.tags === 'string') {
         try {
           resourceData.tags = JSON.parse(resourceData.tags);
-          console.log("Parsed tags:", resourceData.tags);
         } catch (e) {
           // If parsing fails, convert to array
           resourceData.tags = [resourceData.tags];
-          console.log("Fallback tags:", resourceData.tags);
         }
       } else if (!resourceData.tags || resourceData.tags === '') {
         // Set empty array if no tags
@@ -379,13 +374,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         resourceData.fileUrl = `/uploads/${req.file.filename}`;
       }
       
-      console.log("Final resourceData before validation:", resourceData);
       const validatedData = insertResourceSchema.parse(resourceData);
       const resource = await storage.createResource(validatedData);
       res.status(201).json(resource);
     } catch (error) {
       if (error instanceof ZodError) {
-        console.log("Validation error details:", error.errors);
         return res.status(400).json({ message: fromZodError(error).toString() });
       }
       console.error("Error creating resource:", error);

@@ -89,7 +89,6 @@ export default function Resources() {
       // Always ensure tags is handled as array
       const tagsArray = Array.isArray(data.tags) ? data.tags : (data.tags && data.tags !== '' ? [data.tags] : []);
       formData.append('tags', JSON.stringify(tagsArray));
-      console.log('Sending tags:', tagsArray);
       
       // Add other text fields
       Object.entries(data).forEach(([key, value]) => {
@@ -121,6 +120,8 @@ export default function Resources() {
       queryClient.invalidateQueries({ queryKey: ['/api/resources'] });
       setIsCreateOpen(false);
       createForm.reset();
+      // Switch to the 'all' tab to show the newly created resource
+      setActiveTab('all');
     },
     onError: (error: any) => {
       toast({
@@ -139,7 +140,6 @@ export default function Resources() {
       // Always ensure tags is handled as array
       const tagsArray = Array.isArray(data.tags) ? data.tags : (data.tags && data.tags !== '' ? [data.tags] : []);
       formData.append('tags', JSON.stringify(tagsArray));
-      console.log('Sending tags for update:', tagsArray);
       
       // Add other text fields
       Object.entries(data).forEach(([key, value]) => {
