@@ -9,6 +9,8 @@ import {
   categories, Category, InsertCategory,
   resources, Resource, InsertResource
 } from "@shared/schema";
+import { db } from './db';
+import { eq, desc } from 'drizzle-orm';
 
 // Storage Interface
 export interface IStorage {
@@ -1006,4 +1008,133 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database Storage Implementation
+export class DatabaseStorage implements IStorage {
+  // Resource Operations
+  async getResource(id: number): Promise<Resource | undefined> {
+    const [resource] = await db.select().from(resources).where(eq(resources.id, id));
+    return resource;
+  }
+
+  async createResource(resourceData: InsertResource): Promise<Resource> {
+    const [resource] = await db
+      .insert(resources)
+      .values(resourceData)
+      .returning();
+    return resource;
+  }
+
+  async listResources(): Promise<Resource[]> {
+    return await db
+      .select()
+      .from(resources)
+      .where(eq(resources.isActive, true))
+      .orderBy(desc(resources.createdAt));
+  }
+
+  async listResourcesByType(type: string): Promise<Resource[]> {
+    return await db
+      .select()
+      .from(resources)
+      .where(eq(resources.isActive, true))
+      .where(eq(resources.type, type))
+      .orderBy(desc(resources.createdAt));
+  }
+
+  async updateResource(id: number, resourceData: Partial<InsertResource>): Promise<Resource | undefined> {
+    const [resource] = await db
+      .update(resources)
+      .set({ ...resourceData, updatedAt: new Date() })
+      .where(eq(resources.id, id))
+      .returning();
+    return resource;
+  }
+
+  async deleteResource(id: number): Promise<boolean> {
+    const result = await db
+      .update(resources)
+      .set({ isActive: false })
+      .where(eq(resources.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Keep all other MemStorage methods unchanged for now
+  // User Operations
+  async getUser(id: number): Promise<User | undefined> {
+    return memStorage.getUser(id);
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    return memStorage.getUserByUsername(username);
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    return memStorage.createUser(user);
+  }
+
+  async listUsers(): Promise<User[]> {
+    return memStorage.listUsers();
+  }
+
+  async updateUser(id: number, userData: Partial<InsertUser>): Promise<User | undefined> {
+    return memStorage.updateUser(id, userData);
+  }
+
+  async deleteUser(id: number): Promise<boolean> {
+    return memStorage.deleteUser(id);
+  }
+
+  // Forward all other methods to MemStorage for now
+  async getInventoryItem(id: number): Promise<InventoryItem | undefined> { return memStorage.getInventoryItem(id); }
+  async getInventoryItemByItemId(itemId: string): Promise<InventoryItem | undefined> { return memStorage.getInventoryItemByItemId(itemId); }
+  async createInventoryItem(item: InsertInventoryItem): Promise<InventoryItem> { return memStorage.createInventoryItem(item); }
+  async listInventoryItems(): Promise<InventoryItem[]> { return memStorage.listInventoryItems(); }
+  async updateInventoryItem(id: number, itemData: Partial<InsertInventoryItem>): Promise<InventoryItem | undefined> { return memStorage.updateInventoryItem(id, itemData); }
+  async deleteInventoryItem(id: number): Promise<boolean> { return memStorage.deleteInventoryItem(id); }
+  async countInventoryItems(): Promise<{ total: number, available: number, loaned: number, damaged: number }> { return memStorage.countInventoryItems(); }
+  async getInventoryItemsByCategory(): Promise<{ category: string, count: number }[]> { return memStorage.getInventoryItemsByCategory(); }
+  async updateItemQuantities(itemId: number, quantityLoaned: number, quantityDamaged: number): Promise<InventoryItem | undefined> { return memStorage.updateItemQuantities(itemId, quantityLoaned, quantityDamaged); }
+  async markItemDamaged(itemId: number, quantity: number): Promise<InventoryItem | undefined> { return memStorage.markItemDamaged(itemId, quantity); }
+  async markItemRepaired(itemId: number, quantity: number): Promise<InventoryItem | undefined> { return memStorage.markItemRepaired(itemId, quantity); }
+  async updateItemLifecycle(itemId: number, lifecycleStatuses: string[], lifecycleDate: string, lifecycleReason: string, quantityLifecycled: number): Promise<InventoryItem | undefined> { return memStorage.updateItemLifecycle(itemId, lifecycleStatuses, lifecycleDate, lifecycleReason, quantityLifecycled); }
+  async createLifecycleHistory(history: InsertLifecycleHistory): Promise<LifecycleHistory> { return memStorage.createLifecycleHistory(history); }
+  async getLifecycleHistoryByItemId(itemId: number): Promise<LifecycleHistory[]> { return memStorage.getLifecycleHistoryByItemId(itemId); }
+  async listLifecycleHistory(): Promise<LifecycleHistory[]> { return memStorage.listLifecycleHistory(); }
+  async getLoanGroup(id: number): Promise<LoanGroup & { items: (Loan & { item: InventoryItem })[] }> { return memStorage.getLoanGroup(id); }
+  async getLoanGroupByLoanGroupId(loanGroupId: string): Promise<LoanGroup & { items: (Loan & { item: InventoryItem })[] } | undefined> { return memStorage.getLoanGroupByLoanGroupId(loanGroupId); }
+  async createLoanGroup(loanGroup: InsertLoanGroup, itemsData: Array<{ id: number; quantity: number }>): Promise<LoanGroup & { items: Loan[] }> { return memStorage.createLoanGroup(loanGroup, itemsData); }
+  async listLoanGroups(): Promise<LoanGroup[]> { return memStorage.listLoanGroups(); }
+  async updateLoanGroup(id: number, loanGroupData: Partial<Omit<InsertLoanGroup, 'items'>>): Promise<LoanGroup | undefined> { return memStorage.updateLoanGroup(id, loanGroupData); }
+  async markLoanGroupReturned(id: number, actualReturnDate: Date): Promise<LoanGroup | undefined> { return memStorage.markLoanGroupReturned(id, actualReturnDate); }
+  async deleteLoanGroup(id: number): Promise<boolean> { return memStorage.deleteLoanGroup(id); }
+  async getRecentLoanGroups(limit: number): Promise<LoanGroup[]> { return memStorage.getRecentLoanGroups(limit); }
+  async getLoan(id: number): Promise<Loan | undefined> { return memStorage.getLoan(id); }
+  async getLoansByLoanGroupId(loanGroupId: number): Promise<(Loan & { item: InventoryItem })[]> { return memStorage.getLoansByLoanGroupId(loanGroupId); }
+  async createLoan(loan: InsertLoan): Promise<Loan> { return memStorage.createLoan(loan); }
+  async listLoans(): Promise<Loan[]> { return memStorage.listLoans(); }
+  async updateLoan(id: number, loanData: Partial<InsertLoan>): Promise<Loan | undefined> { return memStorage.updateLoan(id, loanData); }
+  async markLoanReturned(id: number, actualReturnDate: Date): Promise<Loan | undefined> { return memStorage.markLoanReturned(id, actualReturnDate); }
+  async deleteLoan(id: number): Promise<boolean> { return memStorage.deleteLoan(id); }
+  async getRecentLoans(limit: number): Promise<Loan[]> { return memStorage.getRecentLoans(limit); }
+  async getDocument(id: number): Promise<Document | undefined> { return memStorage.getDocument(id); }
+  async getDocumentByDocumentId(documentId: string): Promise<Document | undefined> { return memStorage.getDocumentByDocumentId(documentId); }
+  async createDocument(document: InsertDocument): Promise<Document> { return memStorage.createDocument(document); }
+  async listDocuments(): Promise<Document[]> { return memStorage.listDocuments(); }
+  async updateDocument(id: number, documentData: Partial<InsertDocument>): Promise<Document | undefined> { return memStorage.updateDocument(id, documentData); }
+  async deleteDocument(id: number): Promise<boolean> { return memStorage.deleteDocument(id); }
+  async createActivityLog(log: InsertActivityLog): Promise<ActivityLog> { return memStorage.createActivityLog(log); }
+  async listActivityLogs(): Promise<ActivityLog[]> { return memStorage.listActivityLogs(); }
+  async getRecentActivityLogs(limit: number): Promise<ActivityLog[]> { return memStorage.getRecentActivityLogs(limit); }
+  async getCategory(id: number): Promise<Category | undefined> { return memStorage.getCategory(id); }
+  async getCategoryByName(name: string): Promise<Category | undefined> { return memStorage.getCategoryByName(name); }
+  async createCategory(category: InsertCategory): Promise<Category> { return memStorage.createCategory(category); }
+  async listCategories(): Promise<Category[]> { return memStorage.listCategories(); }
+  async listActiveCategories(): Promise<Category[]> { return memStorage.listActiveCategories(); }
+  async updateCategory(id: number, categoryData: Partial<InsertCategory>): Promise<Category | undefined> { return memStorage.updateCategory(id, categoryData); }
+  async deleteCategory(id: number): Promise<boolean> { return memStorage.deleteCategory(id); }
+  async reorderCategories(categoryIds: number[]): Promise<Category[]> { return memStorage.reorderCategories(categoryIds); }
+}
+
+// Create instances
+const memStorage = new MemStorage();
+export const storage = new DatabaseStorage();
