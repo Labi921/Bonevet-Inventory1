@@ -77,8 +77,10 @@ export default function Resources() {
   const [activeTab, setActiveTab] = useState('all');
 
   // Fetch resources
-  const { data: resources = [], isLoading } = useQuery<Resource[]>({
+  const { data: resources = [], isLoading, refetch } = useQuery<Resource[]>({
     queryKey: ['/api/resources'],
+    staleTime: 0, // Always refetch
+    cacheTime: 0, // Don't cache
   });
 
   // Create resource mutation
@@ -112,12 +114,13 @@ export default function Resources() {
 
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: 'Success',
         description: 'Resource created successfully',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/resources'] });
+      // Force refetch instead of just invalidating
+      await refetch();
       setIsCreateOpen(false);
       createForm.reset();
       // Switch to the 'all' tab to show the newly created resource
@@ -263,6 +266,12 @@ export default function Resources() {
     if (activeTab === 'all') return true;
     return resource.type === activeTab;
   });
+
+  // Add debugging info
+  console.log('Total resources:', resources.length);
+  console.log('Active tab:', activeTab);
+  console.log('Filtered resources:', filteredResources.length);
+  console.log('Resources data:', resources);
 
   const getResourceTypeColor = (type: string) => {
     switch (type) {
