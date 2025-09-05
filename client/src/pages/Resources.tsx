@@ -114,10 +114,10 @@ export default function Resources() {
 
       return response.json();
     },
-    onSuccess: async () => {
+    onSuccess: async (newResource) => {
       toast({
         title: 'Success',
-        description: 'Resource created successfully',
+        description: `Resource "${newResource.title}" created successfully`,
       });
       // Force refetch instead of just invalidating
       await refetch();
@@ -267,12 +267,6 @@ export default function Resources() {
     return resource.type === activeTab;
   });
 
-  // Add debugging info
-  console.log('Total resources:', (resources || []).length);
-  console.log('Active tab:', activeTab);
-  console.log('Filtered resources:', filteredResources.length);
-  console.log('Resources data:', resources);
-
   const getResourceTypeColor = (type: string) => {
     switch (type) {
       case 'manual':
@@ -300,7 +294,7 @@ export default function Resources() {
           <div>
             <CardTitle className="flex items-center gap-2">
               <BookOpen className="h-5 w-5" />
-              Resource Library
+              Resource Library ({(resources || []).length} resources)
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
               Access equipment manuals, video tutorials, and BONEVET rules & regulations
