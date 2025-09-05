@@ -8,7 +8,8 @@ import {
   lifecycleHistory, LifecycleHistory, InsertLifecycleHistory,
   categories, Category, InsertCategory,
   resources, Resource, InsertResource,
-  resourceCategories, ResourceCategory, InsertResourceCategory
+  resourceCategories, ResourceCategory, InsertResourceCategory,
+  resourceAttachments, ResourceAttachment, InsertResourceAttachment
 } from "@shared/schema";
 import { db } from './db';
 import { eq, desc } from 'drizzle-orm';
@@ -1092,6 +1093,41 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount > 0;
   }
 
+  // Resource Attachment Operations  
+  async getResourceAttachments(resourceId: number): Promise<ResourceAttachment[]> {
+    return await db
+      .select()
+      .from(resourceAttachments) 
+      .where(eq(resourceAttachments.resourceId, resourceId))
+      .where(eq(resourceAttachments.isActive, true))
+      .orderBy(resourceAttachments.sortOrder);
+  }
+
+  async createResourceAttachment(attachmentData: InsertResourceAttachment): Promise<ResourceAttachment> {
+    const [attachment] = await db
+      .insert(resourceAttachments)
+      .values(attachmentData)
+      .returning();
+    return attachment;
+  }
+
+  async updateResourceAttachment(id: number, attachmentData: Partial<InsertResourceAttachment>): Promise<ResourceAttachment | undefined> {
+    const [attachment] = await db
+      .update(resourceAttachments)
+      .set({ ...attachmentData, updatedAt: new Date() })
+      .where(eq(resourceAttachments.id, id))
+      .returning();
+    return attachment;
+  }
+
+  async deleteResourceAttachment(id: number): Promise<boolean> {
+    const result = await db
+      .update(resourceAttachments)
+      .set({ isActive: false })
+      .where(eq(resourceAttachments.id, id));
+    return result.rowCount > 0;
+  }
+
   // Resource Category Operations
   async getResourceCategory(id: number): Promise<ResourceCategory | undefined> {
     const [category] = await db.select().from(resourceCategories).where(eq(resourceCategories.id, id));
@@ -1136,6 +1172,54 @@ export class DatabaseStorage implements IStorage {
       .set({ isActive: false })
       .where(eq(resourceCategories.id, id));
     return result.rowCount > 0;
+  }
+
+  async reorderResourceCategory(id: number, direction: 'up' | 'down'): Promise<boolean> {
+    // Get the current category
+    const currentCategory = await this.getResourceCategory(id);
+    if (!currentCategory) {
+      return false;
+    }
+
+    // Get all active categories ordered by sortOrder
+    const allCategories = await db
+      .select()
+      .from(resourceCategories)
+      .where(eq(resourceCategories.isActive, true))
+      .orderBy(resourceCategories.sortOrder);
+
+    const currentIndex = allCategories.findIndex(cat => cat.id === id);
+    if (currentIndex === -1) {
+      return false;
+    }
+
+    // Check bounds
+    if (direction === 'up' && currentIndex === 0) {
+      return false; // Already at top
+    }
+    if (direction === 'down' && currentIndex === allCategories.length - 1) {
+      return false; // Already at bottom
+    }
+
+    // Swap sortOrder with adjacent category
+    const swapIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    const currentSortOrder = allCategories[currentIndex].sortOrder;
+    const swapSortOrder = allCategories[swapIndex].sortOrder;
+
+    // Update both categories
+    await db.transaction(async (tx) => {
+      await tx
+        .update(resourceCategories)
+        .set({ sortOrder: swapSortOrder, updatedAt: new Date() })
+        .where(eq(resourceCategories.id, allCategories[currentIndex].id));
+
+      await tx
+        .update(resourceCategories)
+        .set({ sortOrder: currentSortOrder, updatedAt: new Date() })
+        .where(eq(resourceCategories.id, allCategories[swapIndex].id));
+    });
+
+    return true;
   }
 
   // Database User Operations  

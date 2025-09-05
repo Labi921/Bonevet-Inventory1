@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, real, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, real, date, bigint } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -77,6 +77,32 @@ export const insertResourceSchema = createInsertSchema(resources)
 
 export type Resource = typeof resources.$inferSelect;
 export type InsertResource = z.infer<typeof insertResourceSchema>;
+
+// Resource Attachments for Multiple Files (especially for Trainings)
+export const resourceAttachments = pgTable("resource_attachments", {
+  id: serial("id").primaryKey(),
+  resourceId: integer("resource_id").notNull().references(() => resources.id, { onDelete: 'cascade' }),
+  title: text("title").notNull(), // e.g., "Part 1: Introduction", "Setup Guide"
+  type: text("type").notNull(), // "video" or "document" 
+  url: text("url"), // YouTube URL or document URL
+  filePath: text("file_path"), // Path to uploaded file
+  fileSize: bigint("file_size", { mode: 'number' }), // File size in bytes (no limit)
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertResourceAttachmentSchema = createInsertSchema(resourceAttachments)
+  .omit({ id: true, createdAt: true, updatedAt: true })
+  .extend({
+    title: z.string().min(1, 'Attachment title is required'),
+    type: z.enum(["video", "document"]),
+    url: z.string().url('Valid URL required').optional().or(z.literal('')),
+  });
+
+export type ResourceAttachment = typeof resourceAttachments.$inferSelect;
+export type InsertResourceAttachment = z.infer<typeof insertResourceAttachmentSchema>;
 
 // Item Category Enum - Updated with new categories
 export const itemCategoryEnum = z.enum([

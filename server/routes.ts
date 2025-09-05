@@ -519,6 +519,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/resource-categories/:id/reorder', requireAdmin, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { direction } = req.body;
+    
+    if (isNaN(id)) {
+      return res.status(400).json({ message: 'Invalid category ID' });
+    }
+
+    if (!direction || !['up', 'down'].includes(direction)) {
+      return res.status(400).json({ message: 'Invalid direction. Must be "up" or "down"' });
+    }
+
+    try {
+      const success = await storage.reorderResourceCategory(id, direction);
+      if (!success) {
+        return res.status(404).json({ message: 'Resource category not found' });
+      }
+      res.json({ message: 'Category reordered successfully' });
+    } catch (error) {
+      console.error('Error reordering resource category:', error);
+      res.status(500).json({ message: 'Failed to reorder resource category' });
+    }
+  });
+
+  // Resource Attachments API Routes (for multiple videos/PDFs in trainings)
+  app.get('/api/resources/:resourceId/attachments', requireAuth, async (req, res) => {
+    const resourceId = parseInt(req.params.resourceId);
+    if (isNaN(resourceId)) {
+      return res.status(400).json({ message: 'Invalid resource ID' });
+    }
+
+    try {
+      const attachments = await storage.getResourceAttachments(resourceId);
+      res.json(attachments);
+    } catch (error) {
+      console.error('Error fetching resource attachments:', error);
+      res.status(500).json({ message: 'Failed to fetch attachments' });
+    }
+  });
+
+  app.post('/api/resources/:resourceId/attachments', requireAdmin, async (req, res) => {
+    const resourceId = parseInt(req.params.resourceId);
+    if (isNaN(resourceId)) {
+      return res.status(400).json({ message: 'Invalid resource ID' });
+    }
+
+    try {
+      const attachmentData = { ...req.body, resourceId };
+      const attachment = await storage.createResourceAttachment(attachmentData);
+      res.status(201).json(attachment);
+    } catch (error: any) {
+      console.error('Error creating resource attachment:', error);
+      res.status(500).json({ message: 'Failed to create attachment' });
+    }
+  });
+
+  app.put('/api/resource-attachments/:id', requireAdmin, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: 'Invalid attachment ID' });
+    }
+
+    try {
+      const attachmentData = req.body;
+      const attachment = await storage.updateResourceAttachment(id, attachmentData);
+      
+      if (!attachment) {
+        return res.status(404).json({ message: 'Resource attachment not found' });
+      }
+
+      res.json(attachment);
+    } catch (error) {
+      console.error('Error updating resource attachment:', error);
+      res.status(500).json({ message: 'Failed to update attachment' });
+    }
+  });
+
+  app.delete('/api/resource-attachments/:id', requireAdmin, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: 'Invalid attachment ID' });
+    }
+
+    try {
+      const success = await storage.deleteResourceAttachment(id);
+      if (!success) {
+        return res.status(404).json({ message: 'Resource attachment not found' });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting resource attachment:', error);
+      res.status(500).json({ message: 'Failed to delete attachment' });
+    }
+  });
+
   // Inventory routes
   app.get("/api/inventory", requireAuth, async (req, res) => {
     try {

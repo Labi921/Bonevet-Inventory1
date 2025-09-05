@@ -24,7 +24,9 @@ import {
   Edit,
   Trash2,
   Play,
-  Settings
+  Settings,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -303,6 +305,28 @@ export default function Resources() {
     },
   });
 
+  const reorderCategoryMutation = useMutation({
+    mutationFn: async ({ id, direction }: { id: number, direction: 'up' | 'down' }) => {
+      return await apiRequest('PUT', `/api/resource-categories/${id}/reorder`, { direction });
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Success',
+        description: 'Category order updated',
+      });
+      // Invalidate both resource categories and resources to update the tabs
+      queryClient.invalidateQueries({ queryKey: ['/api/resource-categories'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/resources'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to reorder category',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const createForm = useForm<ResourceFormData>({
     resolver: zodResolver(resourceSchema),
     defaultValues: {
@@ -459,25 +483,45 @@ export default function Resources() {
                   <div className="border-t pt-4">
                     <h3 className="font-medium mb-2">Existing Categories</h3>
                     <div className="space-y-2">
-                      {categories.map((category) => (
+                      {categories
+                        .sort((a, b) => a.sortOrder - b.sortOrder)
+                        .map((category, index) => (
                         <div key={category.id} className="flex items-center justify-between p-2 border rounded">
-                          <div>
+                          <div className="flex-1">
                             <div className="font-medium">{category.name}</div>
                             {category.description && (
                               <div className="text-sm text-muted-foreground">{category.description}</div>
                             )}
                           </div>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                              if (confirm(`Delete "${category.name}" category?`)) {
-                                deleteCategoryMutation.mutate(category.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={index === 0}
+                              onClick={() => reorderCategoryMutation.mutate({ id: category.id, direction: 'up' })}
+                            >
+                              <ChevronUp className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={index === categories.length - 1}
+                              onClick={() => reorderCategoryMutation.mutate({ id: category.id, direction: 'down' })}
+                            >
+                              <ChevronDown className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm(`Delete "${category.name}" category?`)) {
+                                  deleteCategoryMutation.mutate(category.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -659,7 +703,9 @@ export default function Resources() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${Math.min(6, categories.length + 1)}, 1fr)` }}>
           <TabsTrigger value="all">All Resources</TabsTrigger>
-          {categories.map((category) => (
+          {categories
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+            .map((category) => (
             <TabsTrigger key={category.id} value={category.name.toLowerCase()}>
               {category.name}
             </TabsTrigger>
