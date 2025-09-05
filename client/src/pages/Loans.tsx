@@ -146,8 +146,13 @@ export default function Loans() {
     return matchesSearch && matchesStatus;
   }) : [];
   
-  // Filter loan groups based on search term and status filter
+  // Filter loan groups based on search term and status filter, excluding loan agreements
   const filteredLoanGroups = Array.isArray(loanGroups) ? loanGroups.filter((group: any) => {
+    // Exclude loan agreement groups (these are now purely documentary)
+    if (group.borrowerType === 'Agreement') {
+      return false;
+    }
+    
     // Search term filter (borrower name)
     const matchesSearch = 
       group.borrowerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||

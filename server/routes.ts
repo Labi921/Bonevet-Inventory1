@@ -1837,62 +1837,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Validate equipment availability and reduce inventory quantities
-      const inventoryUpdates: { itemId: string; quantityRequested: number; item: InventoryItem }[] = [];
+      // Generate a unique document ID
+      const now = new Date();
+      const year = now.getFullYear();
+      const documentCounter = (await storage.listDocuments()).filter(doc => doc.type === 'Loan Agreement').length + 1;
+      const documentId = `LA-${year}-${documentCounter.toString().padStart(3, '0')}`;
       
-      for (const equipment of equipmentList) {
-        if (!equipment.itemId) {
-          return res.status(400).json({ 
-            message: `Equipment item missing itemId: ${equipment.name}` 
-          });
-        }
-        
-        const inventoryItem = await storage.getInventoryItemByItemId(equipment.itemId);
-        if (!inventoryItem) {
-          return res.status(404).json({ 
-            message: `Inventory item not found: ${equipment.itemId}` 
-          });
-        }
-        
-        const quantityRequested = equipment.quantity || 1;
-        if (inventoryItem.quantityAvailable < quantityRequested) {
-          return res.status(400).json({ 
-            message: `Insufficient quantity available for ${inventoryItem.name}. Available: ${inventoryItem.quantityAvailable}, Requested: ${quantityRequested}` 
-          });
-        }
-        
-        inventoryUpdates.push({
-          itemId: equipment.itemId,
-          quantityRequested,
-          item: inventoryItem
-        });
-      }
-      
-      // Create a loan group for this agreement (so items can be managed in Loan tab)
-      const loanGroupData = {
-        borrowerName: borrowerName,
-        borrowerType: "Agreement", // Special type for loan agreements
-        borrowerContact: `${borrowerPhone} | ${borrowerEmail}`,
-        loanDate: loanDate,
-        expectedReturnDate: returnDate,
-        notes: `Loan Agreement: ${borrowerPersonalId} - Generated via Albanian Loan Agreement System`,
-        createdBy: (req.user as any).id
-      };
-      
-      const itemsData = inventoryUpdates.map(update => ({
-        id: update.item.id,
-        quantity: update.quantityRequested
-      }));
-      
-      // Create the loan group (this will automatically create individual loans and update inventory)
-      const loanGroup = await storage.createLoanGroup(loanGroupData, itemsData);
-      
-      // Create a document record for the generated agreement
+      // Create a document record for the generated agreement (no inventory impact)
       const agreementDocument = await storage.createDocument({
         title: `Loan Agreement - ${borrowerName}`,
         type: "Loan Agreement", 
-        documentId: `LA-${loanGroup.loanGroupId}`, // Use loan group ID for consistency
-        relatedItemId: loanGroup.loanGroupId, // Link to the loan group
+        documentId: documentId,
+        relatedItemId: null, // No link to loan group since this is purely documentary
         content: JSON.stringify({
           loanDate,
           returnDate,
@@ -1904,8 +1860,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           borrowerEmail,
           bonevevRepresentativeName,
           dailyPenalty,
-          equipmentList,
-          loanGroupId: loanGroup.loanGroupId // Include reference to loan group
+          equipmentList
         })
       });
       
@@ -1915,7 +1870,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: "Generate",
         entityType: "Document",
         entityId: agreementDocument.id.toString(),
-        details: `Generated Albanian loan agreement for ${borrowerName} with ${equipmentList.length} equipment item(s) and reduced inventory quantities`
+        details: `Generated Albanian loan agreement document for ${borrowerName} with ${equipmentList.length} equipment item(s) (documentary only, no inventory impact)`
       });
       
       res.json({

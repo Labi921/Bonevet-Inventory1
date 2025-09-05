@@ -363,7 +363,7 @@ export default function LoanAgreement() {
       </div>
 
       {/* Pre-fill from existing loan */}
-      {(loans.length > 0 || loanGroups.length > 0) && (
+      {(loans.length > 0 || loanGroups.filter((group: any) => group.borrowerType !== 'Agreement').length > 0) && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -380,15 +380,18 @@ export default function LoanAgreement() {
                 <SelectValue placeholder="Select an existing loan to pre-fill data..." />
               </SelectTrigger>
               <SelectContent>
-                {loanGroups.length > 0 && (
+                {loanGroups.filter((group: any) => group.borrowerType !== 'Agreement').length > 0 && (
                   <div>
                     <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">Multi-Item Loan Groups</div>
-                    {loanGroups.map((group: any) => (
-                      <SelectItem key={`group-${group.id}`} value={`group-${group.id}`}>
-                        📦 {group.borrowerName || 'Unknown'} - {group.loanGroupId} ({Array.isArray(group.items) ? group.items.length : 0} items)
-                        {group.loanDate && ` - ${format(new Date(group.loanDate), 'MMM dd, yyyy')}`}
-                      </SelectItem>
-                    ))}
+                    {loanGroups
+                      .filter((group: any) => group.borrowerType !== 'Agreement')
+                      .map((group: any) => (
+                        <SelectItem key={`group-${group.id}`} value={`group-${group.id}`}>
+                          📦 {group.borrowerName || 'Unknown'} - {group.loanGroupId} ({Array.isArray(group.items) ? group.items.length : 0} items)
+                          {group.loanDate && ` - ${format(new Date(group.loanDate), 'MMM dd, yyyy')}`}
+                        </SelectItem>
+                      ))
+                    }
                   </div>
                 )}
                 {loans.length > 0 && (
