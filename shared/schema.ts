@@ -52,6 +52,23 @@ export const resources = pgTable("resources", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Resource Categories Table
+export const resourceCategories = pgTable("resource_categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertResourceCategorySchema = createInsertSchema(resourceCategories)
+  .omit({ id: true, createdAt: true, updatedAt: true });
+
+export type ResourceCategory = typeof resourceCategories.$inferSelect;
+export type InsertResourceCategory = z.infer<typeof insertResourceCategorySchema>;
+
 export const insertResourceSchema = createInsertSchema(resources)
   .omit({ id: true, createdAt: true, updatedAt: true })
   .extend({

@@ -439,6 +439,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Resource Categories API Routes
+  app.get('/api/resource-categories', requireAuth, async (req, res) => {
+    try {
+      const categories = await storage.listActiveResourceCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error('Error fetching resource categories:', error);
+      res.status(500).json({ message: 'Failed to fetch resource categories' });
+    }
+  });
+
+  app.get('/api/resource-categories/all', requireAdmin, async (req, res) => {
+    try {
+      const categories = await storage.listResourceCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error('Error fetching all resource categories:', error);
+      res.status(500).json({ message: 'Failed to fetch resource categories' });
+    }
+  });
+
+  app.post('/api/resource-categories', requireAdmin, async (req, res) => {
+    try {
+      const categoryData = req.body;
+      const category = await storage.createResourceCategory(categoryData);
+      res.status(201).json(category);
+    } catch (error) {
+      console.error('Error creating resource category:', error);
+      res.status(500).json({ message: 'Failed to create resource category' });
+    }
+  });
+
+  app.put('/api/resource-categories/:id', requireAdmin, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: 'Invalid category ID' });
+    }
+
+    try {
+      const categoryData = req.body;
+      const category = await storage.updateResourceCategory(id, categoryData);
+      
+      if (!category) {
+        return res.status(404).json({ message: 'Resource category not found' });
+      }
+
+      res.json(category);
+    } catch (error) {
+      console.error('Error updating resource category:', error);
+      res.status(500).json({ message: 'Failed to update resource category' });
+    }
+  });
+
+  app.delete('/api/resource-categories/:id', requireAdmin, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: 'Invalid category ID' });
+    }
+
+    try {
+      const success = await storage.deleteResourceCategory(id);
+      if (!success) {
+        return res.status(404).json({ message: 'Resource category not found' });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting resource category:', error);
+      res.status(500).json({ message: 'Failed to delete resource category' });
+    }
+  });
+
   // Inventory routes
   app.get("/api/inventory", requireAuth, async (req, res) => {
     try {

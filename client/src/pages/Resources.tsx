@@ -23,7 +23,8 @@ import {
   ExternalLink,
   Edit,
   Trash2,
-  Play
+  Play,
+  Settings
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -55,6 +56,24 @@ interface Resource {
   updatedAt: string;
 }
 
+interface ResourceCategory {
+  id: number;
+  name: string;
+  description?: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const categorySchema = z.object({
+  name: z.string().min(1, 'Category name is required'),
+  description: z.string().optional(),
+  sortOrder: z.number().default(0),
+});
+
+type CategoryFormData = z.infer<typeof categorySchema>;
+
 const RESOURCE_TYPE_LABELS = {
   manual: 'Equipment Manual',
   video: 'Video Tutorial',
@@ -75,12 +94,19 @@ export default function Resources() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [activeTab, setActiveTab] = useState('all');
+  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<ResourceCategory | null>(null);
 
   // Fetch resources
   const { data: resources = [], isLoading } = useQuery<Resource[]>({
     queryKey: ['/api/resources'],
     staleTime: 0, // Always refetch
     gcTime: 0, // Don't cache (renamed from cacheTime)
+  });
+
+  // Fetch resource categories
+  const { data: categories = [] } = useQuery<ResourceCategory[]>({
+    queryKey: ['/api/resource-categories'],
   });
 
   // Create resource mutation
@@ -205,6 +231,48 @@ export default function Resources() {
     },
   });
 
+  // Category management mutations
+  const createCategoryMutation = useMutation({
+    mutationFn: async (data: CategoryFormData) => {
+      return await apiRequest('POST', '/api/resource-categories', data);
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Success',
+        description: 'Category created successfully',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/resource-categories'] });
+      setIsCategoryManagerOpen(false);
+    },
+  });
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number, data: Partial<CategoryFormData> }) => {
+      return await apiRequest('PUT', `/api/resource-categories/${id}`, data);
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Success',
+        description: 'Category updated successfully',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/resource-categories'] });
+      setEditingCategory(null);
+    },
+  });
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest('DELETE', `/api/resource-categories/${id}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Success',
+        description: 'Category deleted successfully',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/resource-categories'] });
+    },
+  });
+
   const createForm = useForm<ResourceFormData>({
     resolver: zodResolver(resourceSchema),
     defaultValues: {
@@ -220,6 +288,15 @@ export default function Resources() {
 
   const editForm = useForm<Partial<ResourceFormData>>({
     resolver: zodResolver(resourceSchema.partial()),
+  });
+
+  const categoryForm = useForm<CategoryFormData>({
+    resolver: zodResolver(categorySchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      sortOrder: 0,
+    },
   });
 
   const onCreateSubmit = (data: ResourceFormData) => {
@@ -301,17 +378,93 @@ export default function Resources() {
               Access equipment manuals, video tutorials, and BONEVET rules & regulations
             </p>
           </div>
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Add Resource
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Add New Resource</DialogTitle>
-              </DialogHeader>
+          <div className="flex gap-2">
+            <Dialog open={isCategoryManagerOpen} onOpenChange={setIsCategoryManagerOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Manage Categories
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Manage Resource Categories</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <Form {...categoryForm}>
+                    <form onSubmit={categoryForm.handleSubmit((data) => createCategoryMutation.mutate(data))} className="space-y-4">
+                      <FormField
+                        control={categoryForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Category Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="e.g., Trainings" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={categoryForm.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Textarea {...field} rows={2} placeholder="Optional description" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" className="w-full" disabled={createCategoryMutation.isPending}>
+                        {createCategoryMutation.isPending ? 'Creating...' : 'Create Category'}
+                      </Button>
+                    </form>
+                  </Form>
+                  
+                  <div className="border-t pt-4">
+                    <h3 className="font-medium mb-2">Existing Categories</h3>
+                    <div className="space-y-2">
+                      {categories.map((category) => (
+                        <div key={category.id} className="flex items-center justify-between p-2 border rounded">
+                          <div>
+                            <div className="font-medium">{category.name}</div>
+                            {category.description && (
+                              <div className="text-sm text-muted-foreground">{category.description}</div>
+                            )}
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              if (confirm(`Delete "${category.name}" category?`)) {
+                                deleteCategoryMutation.mutate(category.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Add Resource
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Add New Resource</DialogTitle>
+                </DialogHeader>
               <Form {...createForm}>
                 <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -362,6 +515,31 @@ export default function Resources() {
                         <FormControl>
                           <Textarea {...field} rows={3} />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={createForm.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="">No Category</SelectItem>
+                            {categories.map((category) => (
+                              <SelectItem key={category.id} value={category.name}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -444,6 +622,7 @@ export default function Resources() {
               </Form>
             </DialogContent>
           </Dialog>
+          </div>
         </CardHeader>
       </Card>
 

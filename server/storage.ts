@@ -7,7 +7,8 @@ import {
   activityLogs, ActivityLog, InsertActivityLog,
   lifecycleHistory, LifecycleHistory, InsertLifecycleHistory,
   categories, Category, InsertCategory,
-  resources, Resource, InsertResource
+  resources, Resource, InsertResource,
+  resourceCategories, ResourceCategory, InsertResourceCategory
 } from "@shared/schema";
 import { db } from './db';
 import { eq, desc } from 'drizzle-orm';
@@ -95,6 +96,14 @@ export interface IStorage {
   listResourcesByType(type: string): Promise<Resource[]>;
   updateResource(id: number, resourceData: Partial<InsertResource>): Promise<Resource | undefined>;
   deleteResource(id: number): Promise<boolean>;
+
+  // Resource Category Operations
+  getResourceCategory(id: number): Promise<ResourceCategory | undefined>;
+  createResourceCategory(categoryData: InsertResourceCategory): Promise<ResourceCategory>;
+  listResourceCategories(): Promise<ResourceCategory[]>;
+  listActiveResourceCategories(): Promise<ResourceCategory[]>;
+  updateResourceCategory(id: number, categoryData: Partial<InsertResourceCategory>): Promise<ResourceCategory | undefined>;
+  deleteResourceCategory(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -1006,6 +1015,31 @@ export class MemStorage implements IStorage {
   async deleteResource(id: number): Promise<boolean> {
     return this.resources.delete(id);
   }
+
+  // Resource Category Operations (not implemented in memory storage)
+  async getResourceCategory(id: number): Promise<ResourceCategory | undefined> {
+    throw new Error("Resource categories not implemented in MemStorage");
+  }
+
+  async createResourceCategory(categoryData: InsertResourceCategory): Promise<ResourceCategory> {
+    throw new Error("Resource categories not implemented in MemStorage");
+  }
+
+  async listResourceCategories(): Promise<ResourceCategory[]> {
+    throw new Error("Resource categories not implemented in MemStorage");
+  }
+
+  async listActiveResourceCategories(): Promise<ResourceCategory[]> {
+    throw new Error("Resource categories not implemented in MemStorage");
+  }
+
+  async updateResourceCategory(id: number, categoryData: Partial<InsertResourceCategory>): Promise<ResourceCategory | undefined> {
+    throw new Error("Resource categories not implemented in MemStorage");
+  }
+
+  async deleteResourceCategory(id: number): Promise<boolean> {
+    throw new Error("Resource categories not implemented in MemStorage");
+  }
 }
 
 // Database Storage Implementation
@@ -1055,6 +1089,52 @@ export class DatabaseStorage implements IStorage {
       .update(resources)
       .set({ isActive: false })
       .where(eq(resources.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Resource Category Operations
+  async getResourceCategory(id: number): Promise<ResourceCategory | undefined> {
+    const [category] = await db.select().from(resourceCategories).where(eq(resourceCategories.id, id));
+    return category;
+  }
+
+  async createResourceCategory(categoryData: InsertResourceCategory): Promise<ResourceCategory> {
+    const [category] = await db
+      .insert(resourceCategories)
+      .values(categoryData)
+      .returning();
+    return category;
+  }
+
+  async listResourceCategories(): Promise<ResourceCategory[]> {
+    return await db
+      .select()
+      .from(resourceCategories)
+      .orderBy(resourceCategories.sortOrder, resourceCategories.name);
+  }
+
+  async listActiveResourceCategories(): Promise<ResourceCategory[]> {
+    return await db
+      .select()
+      .from(resourceCategories)
+      .where(eq(resourceCategories.isActive, true))
+      .orderBy(resourceCategories.sortOrder, resourceCategories.name);
+  }
+
+  async updateResourceCategory(id: number, categoryData: Partial<InsertResourceCategory>): Promise<ResourceCategory | undefined> {
+    const [category] = await db
+      .update(resourceCategories)
+      .set({ ...categoryData, updatedAt: new Date() })
+      .where(eq(resourceCategories.id, id))
+      .returning();
+    return category;
+  }
+
+  async deleteResourceCategory(id: number): Promise<boolean> {
+    const result = await db
+      .update(resourceCategories)
+      .set({ isActive: false })
+      .where(eq(resourceCategories.id, id));
     return result.rowCount > 0;
   }
 
