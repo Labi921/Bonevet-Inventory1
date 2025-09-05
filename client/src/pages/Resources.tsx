@@ -372,7 +372,8 @@ export default function Resources() {
 
   const filteredResources = (resources || []).filter((resource: Resource) => {
     if (activeTab === 'all') return true;
-    return resource.type === activeTab;
+    // Filter by category name (case insensitive match)
+    return resource.category && resource.category.toLowerCase() === activeTab.toLowerCase();
   });
 
   const getResourceTypeColor = (type: string) => {
@@ -657,12 +658,13 @@ export default function Resources() {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${Math.min(6, categories.length + 1)}, 1fr)` }}>
           <TabsTrigger value="all">All Resources</TabsTrigger>
-          <TabsTrigger value="manual">Manuals</TabsTrigger>
-          <TabsTrigger value="video">Videos</TabsTrigger>
-          <TabsTrigger value="document">Documents</TabsTrigger>
-          <TabsTrigger value="rules">Rules</TabsTrigger>
+          {categories.map((category) => (
+            <TabsTrigger key={category.id} value={category.name.toLowerCase()}>
+              {category.name}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value={activeTab} className="space-y-4">
@@ -802,7 +804,7 @@ export default function Resources() {
                 <p className="text-gray-500 mb-4">
                   {activeTab === 'all' 
                     ? 'No resources have been added yet.' 
-                    : `No ${RESOURCE_TYPE_LABELS[activeTab as keyof typeof RESOURCE_TYPE_LABELS].toLowerCase()} found.`}
+                    : `No resources found in "${activeTab}" category.`}
                 </p>
                 <Button onClick={() => setIsCreateOpen(true)}>
                   <PlusCircle className="h-4 w-4 mr-2" />
