@@ -514,20 +514,21 @@ export default function Resources() {
                     />
                     <FormField
                       control={createForm.control}
-                      name="type"
+                      name="category"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormLabel>Category</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue />
+                                <SelectValue placeholder="Select a category" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {Object.entries(RESOURCE_TYPE_LABELS).map(([value, label]) => (
-                                <SelectItem key={value} value={value}>
-                                  {label}
+                              <SelectItem value="none">No Category</SelectItem>
+                              {categories.map((category) => (
+                                <SelectItem key={category.id} value={category.name}>
+                                  {category.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -552,23 +553,21 @@ export default function Resources() {
                   />
                   <FormField
                     control={createForm.control}
-                    name="category"
+                    name="type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Category</FormLabel>
+                        <FormLabel>Resource Type</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select a category" />
+                              <SelectValue placeholder="Select resource type" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="none">No Category</SelectItem>
-                            {categories.map((category) => (
-                              <SelectItem key={category.id} value={category.name}>
-                                {category.name}
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="manual">Equipment Manual</SelectItem>
+                            <SelectItem value="video">Video Tutorial</SelectItem>
+                            <SelectItem value="document">General Document</SelectItem>
+                            <SelectItem value="rules">Rules & Regulations</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
