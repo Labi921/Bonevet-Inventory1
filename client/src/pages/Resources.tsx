@@ -90,6 +90,10 @@ export default function Resources() {
       Object.entries(data).forEach(([key, value]) => {
         if (key === 'pdfFile' && value instanceof File) {
           formData.append('pdfFile', value);
+        } else if (key === 'tags') {
+          // Handle tags as JSON array
+          const tagsArray = Array.isArray(value) ? value : (value ? [value] : []);
+          formData.append(key, JSON.stringify(tagsArray));
         } else if (key !== 'pdfFile' && value !== undefined && value !== '') {
           formData.append(key, String(value));
         }
@@ -135,6 +139,10 @@ export default function Resources() {
       Object.entries(data).forEach(([key, value]) => {
         if (key === 'pdfFile' && value instanceof File) {
           formData.append('pdfFile', value);
+        } else if (key === 'tags') {
+          // Handle tags as JSON array
+          const tagsArray = Array.isArray(value) ? value : (value ? [value] : []);
+          formData.append(key, JSON.stringify(tagsArray));
         } else if (key !== 'pdfFile' && value !== undefined && value !== '') {
           formData.append(key, String(value));
         }

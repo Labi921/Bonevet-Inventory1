@@ -356,6 +356,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as any;
       const resourceData = { ...req.body, uploadedBy: user.id };
       
+      // Parse tags if it's a JSON string
+      if (resourceData.tags && typeof resourceData.tags === 'string') {
+        try {
+          resourceData.tags = JSON.parse(resourceData.tags);
+        } catch (e) {
+          // If parsing fails, convert to array
+          resourceData.tags = [resourceData.tags];
+        }
+      }
+      
       // Add file path if PDF uploaded
       if (req.file) {
         resourceData.fileUrl = `/uploads/${req.file.filename}`;
@@ -377,6 +387,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const updateData = { ...req.body };
+      
+      // Parse tags if it's a JSON string
+      if (updateData.tags && typeof updateData.tags === 'string') {
+        try {
+          updateData.tags = JSON.parse(updateData.tags);
+        } catch (e) {
+          // If parsing fails, convert to array
+          updateData.tags = [updateData.tags];
+        }
+      }
       
       // Add file path if PDF uploaded
       if (req.file) {
