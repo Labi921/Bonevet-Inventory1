@@ -105,6 +105,11 @@ export default function LoanAgreement() {
     queryKey: ['/api/loans']
   });
 
+  // Fetch existing loan groups for pre-filling
+  const { data: loanGroups = [] } = useQuery<any[]>({
+    queryKey: ['/api/loan-groups']
+  });
+
   const form = useForm<LoanAgreementForm>({
     resolver: zodResolver(loanAgreementSchema),
     defaultValues: {
@@ -230,30 +235,63 @@ export default function LoanAgreement() {
       return;
     }
 
-    const selectedLoanData = loans.find((loan: any) => loan.id.toString() === loanId);
-    if (selectedLoanData) {
-      setSelectedLoan(selectedLoanData);
+    // Check if it's a loan group (prefixed with 'group-') or individual loan
+    if (loanId.startsWith('group-')) {
+      const groupId = loanId.replace('group-', '');
+      const selectedLoanGroup = loanGroups.find((group: any) => group.id.toString() === groupId);
       
-      // Pre-fill form with loan data
-      form.setValue('borrowerName', selectedLoanData.borrowerName || '');
-      form.setValue('borrowerPhone', selectedLoanData.borrowerContact?.split(' | ')[0] || '');
-      form.setValue('borrowerEmail', selectedLoanData.borrowerContact?.split(' | ')[1] || '');
-      form.setValue('loanDate', selectedLoanData.loanDate ? format(new Date(selectedLoanData.loanDate), 'yyyy-MM-dd') : '');
-      form.setValue('returnDate', selectedLoanData.expectedReturnDate ? format(new Date(selectedLoanData.expectedReturnDate), 'yyyy-MM-dd') : '');
-      
-      // Pre-fill equipment from loan
-      const selectedItem = inventoryItems.find((item: any) => item.id === selectedLoanData.itemId);
-      if (selectedItem) {
-        const newEquipmentList = [{
-          itemId: selectedItem.itemId || '',
-          name: selectedItem.name || 'Unknown Item',
-          model: selectedItem.itemId || '',
-          quantity: selectedLoanData.quantityLoaned || 1,
-          initialCondition: `Condition: ${selectedItem.status || 'Unknown'}`
-        }];
+      if (selectedLoanGroup) {
+        setSelectedLoan(selectedLoanGroup);
+        
+        // Pre-fill form with loan group data
+        form.setValue('borrowerName', selectedLoanGroup.borrowerName || '');
+        form.setValue('borrowerPhone', selectedLoanGroup.borrowerContact?.split(' | ')[0] || '');
+        form.setValue('borrowerEmail', selectedLoanGroup.borrowerContact?.split(' | ')[1] || '');
+        form.setValue('loanDate', selectedLoanGroup.loanDate ? format(new Date(selectedLoanGroup.loanDate), 'yyyy-MM-dd') : '');
+        form.setValue('returnDate', selectedLoanGroup.expectedReturnDate ? format(new Date(selectedLoanGroup.expectedReturnDate), 'yyyy-MM-dd') : '');
+        
+        // Pre-fill equipment from loan group items
+        const newEquipmentList = (selectedLoanGroup.items || []).map((item: any) => {
+          const inventoryItem = inventoryItems.find((inv: any) => inv.id === item.itemId);
+          return {
+            itemId: inventoryItem?.itemId || '',
+            name: inventoryItem?.name || 'Unknown Item',
+            model: inventoryItem?.itemId || '',
+            quantity: item.quantityLoaned || 1,
+            initialCondition: `Condition: ${inventoryItem?.status || 'Unknown'}`
+          };
+        });
         
         setEquipmentList(newEquipmentList);
         form.setValue('equipmentList', newEquipmentList);
+      }
+    } else {
+      // Handle individual loan
+      const selectedLoanData = loans.find((loan: any) => loan.id.toString() === loanId);
+      if (selectedLoanData) {
+        setSelectedLoan(selectedLoanData);
+        
+        // Pre-fill form with loan data
+        form.setValue('borrowerName', selectedLoanData.borrowerName || '');
+        form.setValue('borrowerPhone', selectedLoanData.borrowerContact?.split(' | ')[0] || '');
+        form.setValue('borrowerEmail', selectedLoanData.borrowerContact?.split(' | ')[1] || '');
+        form.setValue('loanDate', selectedLoanData.loanDate ? format(new Date(selectedLoanData.loanDate), 'yyyy-MM-dd') : '');
+        form.setValue('returnDate', selectedLoanData.expectedReturnDate ? format(new Date(selectedLoanData.expectedReturnDate), 'yyyy-MM-dd') : '');
+        
+        // Pre-fill equipment from loan
+        const selectedItem = inventoryItems.find((item: any) => item.id === selectedLoanData.itemId);
+        if (selectedItem) {
+          const newEquipmentList = [{
+            itemId: selectedItem.itemId || '',
+            name: selectedItem.name || 'Unknown Item',
+            model: selectedItem.itemId || '',
+            quantity: selectedLoanData.quantityLoaned || 1,
+            initialCondition: `Condition: ${selectedItem.status || 'Unknown'}`
+          }];
+          
+          setEquipmentList(newEquipmentList);
+          form.setValue('equipmentList', newEquipmentList);
+        }
       }
     }
   };
@@ -325,7 +363,7 @@ export default function LoanAgreement() {
       </div>
 
       {/* Pre-fill from existing loan */}
-      {loans.length > 0 && (
+      {(loans.length > 0 || loanGroups.length > 0) && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -333,7 +371,7 @@ export default function LoanAgreement() {
               Pre-fill from Existing Loan
             </CardTitle>
             <CardDescription>
-              Select an existing loan to automatically populate borrower and equipment information
+              Select an existing loan (individual or multi-item) to automatically populate borrower and equipment information
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -342,12 +380,28 @@ export default function LoanAgreement() {
                 <SelectValue placeholder="Select an existing loan to pre-fill data..." />
               </SelectTrigger>
               <SelectContent>
-                {loans.map((loan: any) => (
-                  <SelectItem key={loan.id} value={loan.id.toString()}>
-                    {loan.borrowerName || 'Unknown'} - {inventoryItems.find((item: any) => item.id === loan.itemId)?.name || 'Unknown Item'} 
-                    ({loan.loanDate ? format(new Date(loan.loanDate), 'MMM dd, yyyy') : 'Unknown Date'})
-                  </SelectItem>
-                ))}
+                {loanGroups.length > 0 && (
+                  <div>
+                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">Multi-Item Loan Groups</div>
+                    {loanGroups.map((group: any) => (
+                      <SelectItem key={`group-${group.id}`} value={`group-${group.id}`}>
+                        📦 {group.borrowerName || 'Unknown'} - {group.loanGroupId} ({Array.isArray(group.items) ? group.items.length : 0} items)
+                        {group.loanDate && ` - ${format(new Date(group.loanDate), 'MMM dd, yyyy')}`}
+                      </SelectItem>
+                    ))}
+                  </div>
+                )}
+                {loans.length > 0 && (
+                  <div>
+                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">Individual Loans</div>
+                    {loans.map((loan: any) => (
+                      <SelectItem key={loan.id} value={loan.id.toString()}>
+                        📋 {loan.borrowerName || 'Unknown'} - {inventoryItems.find((item: any) => item.id === loan.itemId)?.name || 'Unknown Item'} 
+                        ({loan.loanDate ? format(new Date(loan.loanDate), 'MMM dd, yyyy') : 'Unknown Date'})
+                      </SelectItem>
+                    ))}
+                  </div>
+                )}
               </SelectContent>
             </Select>
           </CardContent>
