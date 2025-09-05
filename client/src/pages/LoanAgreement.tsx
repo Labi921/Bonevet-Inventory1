@@ -100,16 +100,6 @@ export default function LoanAgreement() {
     queryKey: ['/api/inventory']
   });
 
-  // Debug inventory data
-  useEffect(() => {
-    if (inventoryItems.length > 0) {
-      console.log('Inventory items loaded:', inventoryItems.length);
-      console.log('Sample item structure:', inventoryItems[0]);
-      const availableItems = inventoryItems.filter(item => (item.quantityAvailable || item.quantity || 0) > 0);
-      console.log('Available items count:', availableItems.length);
-    }
-  }, [inventoryItems]);
-
   // Fetch existing loans for pre-filling
   const { data: loans = [] } = useQuery<any[]>({
     queryKey: ['/api/loans']
@@ -131,6 +121,11 @@ export default function LoanAgreement() {
       equipmentList: equipmentList
     }
   });
+
+  // Ensure equipment list stays in sync with form
+  useEffect(() => {
+    form.setValue('equipmentList', equipmentList);
+  }, [equipmentList, form]);
 
   // Generate loan agreement mutation
   const generateAgreementMutation = useMutation({
@@ -208,31 +203,23 @@ export default function LoanAgreement() {
     const newList = [...equipmentList];
     newList[index] = { ...newList[index], [field]: value };
     setEquipmentList(newList);
-    form.setValue('equipmentList', newList);
   };
 
   // Auto-fill from selected inventory item
   const handleInventoryItemSelect = (index: number, itemId: string) => {
-    console.log('handleInventoryItemSelect called with:', index, itemId);
-    console.log('Available inventory items:', inventoryItems);
-    
-    if (!itemId) {
-      console.log('No itemId provided');
-      return;
-    }
+    if (!itemId) return;
     
     const selectedItem = inventoryItems.find(item => item.itemId === itemId);
-    console.log('Found selected item:', selectedItem);
-    
     if (selectedItem) {
-      updateEquipmentItem(index, 'itemId', itemId);
-      updateEquipmentItem(index, 'name', selectedItem.name);
-      updateEquipmentItem(index, 'model', selectedItem.model || selectedItem.itemId);
-      updateEquipmentItem(index, 'initialCondition', `Condition: ${selectedItem.status || 'Good'} - Available Quantity: ${selectedItem.quantityAvailable || 0}`);
-      
-      console.log('Equipment item updated for index:', index);
-    } else {
-      console.log('No item found with itemId:', itemId);
+      const newList = [...equipmentList];
+      newList[index] = {
+        ...newList[index],
+        itemId: itemId,
+        name: selectedItem.name,
+        model: selectedItem.model || selectedItem.itemId,
+        initialCondition: `Condition: ${selectedItem.status || 'Good'} - Available Quantity: ${selectedItem.quantityAvailable || selectedItem.quantity || 0}`
+      };
+      setEquipmentList(newList);
     }
   };
 
@@ -272,7 +259,16 @@ export default function LoanAgreement() {
   };
 
   const onSubmit = async (data: LoanAgreementForm) => {
-    // Update form data with current equipment list
+    // Ensure we have valid equipment data
+    if (!equipmentList.length || equipmentList.some(item => !item.name || !item.itemId)) {
+      toast({
+        title: "Missing Equipment",
+        description: "Please add and select equipment items for the loan agreement.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const formDataWithEquipment = {
       ...data,
       equipmentList
@@ -560,38 +556,22 @@ export default function LoanAgreement() {
                       <label className="text-sm font-medium">Select from Inventory</label>
                       <Select 
                         value={equipment.itemId || ""} 
-                        onValueChange={(value) => {
-                          console.log('Select onValueChange triggered with value:', value);
-                          handleInventoryItemSelect(index, value);
-                        }}
+                        onValueChange={(value) => handleInventoryItemSelect(index, value)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select inventory item..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {inventoryItems.length > 0 ? (
-                            inventoryItems
-                              .filter(item => {
-                                const hasQuantity = (item.quantityAvailable || item.quantity || 0) > 0;
-                                console.log(`Item ${item.name} (${item.itemId}):`, {
-                                  quantityAvailable: item.quantityAvailable,
-                                  quantity: item.quantity,
-                                  hasQuantity
-                                });
-                                return hasQuantity;
-                              })
-                              .map((item) => (
-                                <SelectItem key={item.itemId} value={item.itemId}>
-                                  {item.name} ({item.itemId}) - Available: {item.quantityAvailable || item.quantity || 0}
-                                </SelectItem>
-                              ))
-                          ) : (
-                            <SelectItem value="" disabled>
-                              Loading items...
-                            </SelectItem>
-                          )}
-                          {inventoryItems.length > 0 && inventoryItems.filter(item => (item.quantityAvailable || item.quantity || 0) > 0).length === 0 && (
-                            <SelectItem value="" disabled>
+                          {inventoryItems
+                            .filter(item => (item.quantityAvailable || item.quantity || 0) > 0)
+                            .map((item) => (
+                              <SelectItem key={item.itemId} value={item.itemId}>
+                                {item.name} ({item.itemId}) - Available: {item.quantityAvailable || item.quantity || 0}
+                              </SelectItem>
+                            ))
+                          }
+                          {inventoryItems.filter(item => (item.quantityAvailable || item.quantity || 0) > 0).length === 0 && (
+                            <SelectItem value="no-items" disabled>
                               No available items
                             </SelectItem>
                           )}
