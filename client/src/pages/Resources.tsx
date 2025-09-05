@@ -300,12 +300,12 @@ export default function Resources() {
   });
 
   const onCreateSubmit = (data: ResourceFormData) => {
-    // Clean up empty strings
+    // Clean up empty strings and handle "none" category
     const cleanData = {
       ...data,
       fileUrl: data.fileUrl || undefined,
       videoUrl: data.videoUrl || undefined,
-      category: data.category || undefined,
+      category: data.category === 'none' ? undefined : data.category,
     };
     createMutation.mutate(cleanData);
   };
@@ -532,7 +532,7 @@ export default function Resources() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">No Category</SelectItem>
+                            <SelectItem value="none">No Category</SelectItem>
                             {categories.map((category) => (
                               <SelectItem key={category.id} value={category.name}>
                                 {category.name}

@@ -134,7 +134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ message: "Not authenticated" });
     }
     const user = req.user as any;
-    if (!user || (user.role !== "admin" && user.role !== "super_admin")) {
+    if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
       return res.status(403).json({ message: "Forbidden" });
     }
     next();
@@ -146,7 +146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ message: "Not authenticated" });
     }
     const user = req.user as any;
-    if (!user || user.role !== "super_admin") {
+    if (!user || user.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden" });
     }
     next();
@@ -211,7 +211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ message: "Not authenticated" });
     }
     const user = req.user as any;
-    if (!user || !['admin', 'super_admin'].includes(user.role)) {
+    if (!user || !['admin', 'superadmin'].includes(user.role)) {
       return res.status(403).json({ message: "Forbidden" });
     }
     next();
@@ -234,8 +234,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check role creation permissions:
       // - Admin can create: admin, standard_user, staff_user
-      // - Super Admin can create: any role including super_admin
-      if (currentUser.role === 'admin' && requestedRole === 'super_admin') {
+      // - Super Admin can create: any role including superadmin
+      if (currentUser.role === 'admin' && requestedRole === 'superadmin') {
         return res.status(403).json({ message: "Admin users cannot create Super Admin accounts" });
       }
       
@@ -269,14 +269,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check role modification permissions:
       // - Admin can modify: admin, standard_user, staff_user
-      // - Super Admin can modify: any role including super_admin
-      if (validatedData.role === 'super_admin' && currentUser.role === 'admin') {
+      // - Super Admin can modify: any role including superadmin
+      if (validatedData.role === 'superadmin' && currentUser.role === 'admin') {
         return res.status(403).json({ message: "Admin users cannot create or modify Super Admin accounts" });
       }
       
       // Get the target user to check if they're trying to modify a Super Admin
       const targetUser = await storage.getUser(id);
-      if (targetUser && targetUser.role === 'super_admin' && currentUser.role === 'admin') {
+      if (targetUser && targetUser.role === 'superadmin' && currentUser.role === 'admin') {
         return res.status(403).json({ message: "Admin users cannot modify Super Admin accounts" });
       }
       
@@ -303,7 +303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get the target user to check if they're trying to delete a Super Admin
       const targetUser = await storage.getUser(id);
-      if (targetUser && targetUser.role === 'super_admin' && currentUser.role === 'admin') {
+      if (targetUser && targetUser.role === 'superadmin' && currentUser.role === 'admin') {
         return res.status(403).json({ message: "Admin users cannot delete Super Admin accounts" });
       }
       
@@ -333,7 +333,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Resource Management Routes
-  app.get("/api/resources", requireStandardUserOrAbove, async (req, res) => {
+  app.get("/api/resources", requireAuth, async (req, res) => {
     try {
       const type = req.query.type as string;
       let resources;

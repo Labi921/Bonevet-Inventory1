@@ -154,7 +154,7 @@ export class MemStorage implements IStorage {
       password: "admin123", // In a real app, this would be hashed
       name: "Admin User",
       email: "admin@bonevet.org",
-      role: "super_admin",
+      role: "superadmin",
       active: true
     });
 
