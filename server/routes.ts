@@ -326,7 +326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ message: "Not authenticated" });
     }
     const user = req.user as any;
-    if (!user || !['standard_user', 'staff_user', 'admin', 'super_admin'].includes(user.role)) {
+    if (!user || !['standard_user', 'staff_user', 'admin', 'superadmin'].includes(user.role)) {
       return res.status(403).json({ message: "Forbidden" });
     }
     next();
