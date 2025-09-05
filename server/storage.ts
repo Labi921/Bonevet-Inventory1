@@ -1058,30 +1058,48 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount > 0;
   }
 
-  // Keep all other MemStorage methods unchanged for now
-  // User Operations
+  // Database User Operations  
   async getUser(id: number): Promise<User | undefined> {
-    return memStorage.getUser(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return memStorage.getUserByUsername(username);
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
-  async createUser(user: InsertUser): Promise<User> {
-    return memStorage.createUser(user);
+  async createUser(userData: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .returning();
+    return user;
   }
 
   async listUsers(): Promise<User[]> {
-    return memStorage.listUsers();
+    return await db
+      .select()
+      .from(users)
+      .where(eq(users.active, true))
+      .orderBy(desc(users.createdAt));
   }
 
   async updateUser(id: number, userData: Partial<InsertUser>): Promise<User | undefined> {
-    return memStorage.updateUser(id, userData);
+    const [user] = await db
+      .update(users)
+      .set({ ...userData, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
   }
 
   async deleteUser(id: number): Promise<boolean> {
-    return memStorage.deleteUser(id);
+    const result = await db
+      .update(users)
+      .set({ active: false })
+      .where(eq(users.id, id));
+    return result.rowCount > 0;
   }
 
   // Forward all other methods to MemStorage for now
