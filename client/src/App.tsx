@@ -32,7 +32,7 @@ function Router() {
       
       <Route path="/">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin', 'standard_user']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin', 'standard_user']}>
             <Dashboard />
           </ProtectedRoute>
         </Layout>
@@ -41,7 +41,7 @@ function Router() {
       {/* Inventory routes */}
       <Route path="/inventory">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin', 'standard_user']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin', 'standard_user']}>
             <Inventory />
           </ProtectedRoute>
         </Layout>
@@ -49,7 +49,7 @@ function Router() {
       
       <Route path="/inventory/add">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
             <Inventory />
           </ProtectedRoute>
         </Layout>
@@ -58,7 +58,7 @@ function Router() {
       <Route path="/inventory/view/:id">
         {(params) => (
           <Layout>
-            <ProtectedRoute allowedRoles={['admin', 'super_admin', 'standard_user']}>
+            <ProtectedRoute allowedRoles={['admin', 'superadmin', 'standard_user']}>
               <Inventory />
             </ProtectedRoute>
           </Layout>
@@ -68,7 +68,7 @@ function Router() {
       <Route path="/inventory/edit/:id">
         {(params) => (
           <Layout>
-            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
               <Inventory />
             </ProtectedRoute>
           </Layout>
@@ -77,7 +77,7 @@ function Router() {
 
       <Route path="/inventory/import">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin', 'standard_user']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin', 'standard_user']}>
             <CSVImport />
           </ProtectedRoute>
         </Layout>
@@ -85,7 +85,7 @@ function Router() {
 
       <Route path="/inventory/categories">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
             <CategoryManagement />
           </ProtectedRoute>
         </Layout>
@@ -94,7 +94,7 @@ function Router() {
       {/* Loan routes */}
       <Route path="/loans">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
             <Loans />
           </ProtectedRoute>
         </Layout>
@@ -102,7 +102,7 @@ function Router() {
       
       <Route path="/loans/new">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
             <Loans />
           </ProtectedRoute>
         </Layout>
@@ -110,7 +110,7 @@ function Router() {
 
       <Route path="/loans/new-multi">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
             <Loans />
           </ProtectedRoute>
         </Layout>
@@ -119,7 +119,7 @@ function Router() {
       <Route path="/loans/view/:id">
         {(params) => (
           <Layout>
-            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
               <Loans />
             </ProtectedRoute>
           </Layout>
@@ -129,7 +129,7 @@ function Router() {
       {/* Document routes */}
       <Route path="/documents">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
             <Documents />
           </ProtectedRoute>
         </Layout>
@@ -137,7 +137,7 @@ function Router() {
       
       <Route path="/documents/new">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
             <Documents />
           </ProtectedRoute>
         </Layout>
@@ -146,7 +146,7 @@ function Router() {
       <Route path="/documents/view/:id">
         {(params) => (
           <Layout>
-            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
               <Documents />
             </ProtectedRoute>
           </Layout>
@@ -156,7 +156,7 @@ function Router() {
       {/* Reports route */}
       <Route path="/reports">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
             <Reports />
           </ProtectedRoute>
         </Layout>
@@ -164,7 +164,7 @@ function Router() {
       
       <Route path="/barcode">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
             <Barcode />
           </ProtectedRoute>
         </Layout>
@@ -172,7 +172,7 @@ function Router() {
       
       <Route path="/borrowing-request">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
             <BorrowingRequest />
           </ProtectedRoute>
         </Layout>
@@ -180,7 +180,7 @@ function Router() {
       
       <Route path="/loan-agreement">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
             <LoanAgreement />
           </ProtectedRoute>
         </Layout>
@@ -189,7 +189,7 @@ function Router() {
       {/* User routes - Admin and Super Admin only */}
       <Route path="/users">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
             <Users />
           </ProtectedRoute>
         </Layout>
@@ -197,7 +197,7 @@ function Router() {
       
       <Route path="/users/add">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
             <Users />
           </ProtectedRoute>
         </Layout>
@@ -206,7 +206,7 @@ function Router() {
       <Route path="/users/edit/:id">
         {(params) => (
           <Layout>
-            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
               <Users />
             </ProtectedRoute>
           </Layout>
@@ -216,7 +216,7 @@ function Router() {
       {/* Resources route - Standard Users and above */}
       <Route path="/resources">
         <Layout>
-          <ProtectedRoute allowedRoles={['standard_user', 'staff_user', 'admin', 'super_admin']}>
+          <ProtectedRoute allowedRoles={['standard_user', 'staff_user', 'admin', 'superadmin']}>
             <Resources />
           </ProtectedRoute>
         </Layout>
@@ -224,7 +224,7 @@ function Router() {
       
       <Route path="/settings">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
             <Settings />
           </ProtectedRoute>
         </Layout>
@@ -232,7 +232,7 @@ function Router() {
       
       <Route path="/audit-logs">
         <Layout>
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
             <AuditLogs />
           </ProtectedRoute>
         </Layout>

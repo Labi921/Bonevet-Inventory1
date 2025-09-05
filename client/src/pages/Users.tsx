@@ -22,7 +22,7 @@ const userSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Valid email is required'),
-  role: z.enum(['super_admin', 'admin', 'standard_user', 'staff_user']),
+  role: z.enum(['superadmin', 'admin', 'standard_user', 'staff_user']),
   active: z.boolean().default(true),
 });
 
@@ -39,14 +39,14 @@ interface User {
 }
 
 const ROLE_LABELS = {
-  super_admin: 'Super Admin',
+  superadmin: 'Super Admin',
   admin: 'Admin',
   standard_user: 'Standard User',
   staff_user: 'Staff User',
 };
 
 const ROLE_DESCRIPTIONS = {
-  super_admin: 'Full access to everything',
+  superadmin: 'Full access to everything',
   admin: 'Can manage inventory, documents and users',
   standard_user: 'Can add products via CSV, check inventory status',
   staff_user: 'Access to manuals, videos, and repair guides',
@@ -61,8 +61,8 @@ export default function Users() {
   
   // Get available roles based on current user
   const getAvailableRoles = () => {
-    if (currentUser?.role === 'super_admin') {
-      return ['super_admin', 'admin', 'standard_user', 'staff_user'];
+    if (currentUser?.role === 'superadmin') {
+      return ['superadmin', 'admin', 'standard_user', 'staff_user'];
     } else if (currentUser?.role === 'admin') {
       return ['admin', 'standard_user', 'staff_user'];
     }
@@ -179,7 +179,7 @@ export default function Users() {
 
   const handleDelete = (user: User) => {
     // Prevent Admin users from deleting Super Admin accounts
-    if (currentUser?.role === 'admin' && user.role === 'super_admin') {
+    if (currentUser?.role === 'admin' && user.role === 'superadmin') {
       toast({
         title: 'Access Denied',
         description: 'Admin users cannot delete Super Admin accounts',
@@ -195,7 +195,7 @@ export default function Users() {
   
   const canEditUser = (user: User) => {
     // Admin users cannot edit Super Admin accounts
-    if (currentUser?.role === 'admin' && user.role === 'super_admin') {
+    if (currentUser?.role === 'admin' && user.role === 'superadmin') {
       return false;
     }
     return true;
@@ -203,7 +203,7 @@ export default function Users() {
   
   const canDeleteUser = (user: User) => {
     // Admin users cannot delete Super Admin accounts
-    if (currentUser?.role === 'admin' && user.role === 'super_admin') {
+    if (currentUser?.role === 'admin' && user.role === 'superadmin') {
       return false;
     }
     return true;
@@ -211,7 +211,7 @@ export default function Users() {
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case 'super_admin':
+      case 'superadmin':
         return 'bg-red-100 text-red-800';
       case 'admin':
         return 'bg-blue-100 text-blue-800';

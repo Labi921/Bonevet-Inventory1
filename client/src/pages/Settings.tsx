@@ -83,7 +83,7 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState('general');
   
   // Check if user has permission to access settings (Admin or Super Admin only)
-  if (!user || !['admin', 'super_admin'].includes(user.role)) {
+  if (!user || !['admin', 'superadmin'].includes(user.role)) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">

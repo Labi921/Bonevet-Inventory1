@@ -133,7 +133,7 @@ export default function Sidebar() {
         )}
         
         {/* Resources for Standard Users, Staff and above */}
-        {(user?.role === 'standard_user' || user?.role === 'staff_user' || user?.role === 'admin' || user?.role === 'super_admin') && (
+        {(user?.role === 'standard_user' || user?.role === 'staff_user' || user?.role === 'admin' || user?.role === 'superadmin') && (
           <div className={`py-4 ${user?.role !== 'staff_user' && user?.role !== 'standard_user' ? 'border-t border-primary-foreground/20' : ''}`}>
             <p className="text-primary-foreground/90 text-xs uppercase font-bold">
               {user?.role === 'staff_user' ? 'Staff Resources' : user?.role === 'standard_user' ? 'Resources' : 'Staff'}
@@ -156,7 +156,7 @@ export default function Sidebar() {
         )}
 
         {/* Admin and Super Admin only */}
-        {(user?.role === 'admin' || user?.role === 'super_admin') && (
+        {(user?.role === 'admin' || user?.role === 'superadmin') && (
           <div className="py-4 border-t border-primary-foreground/20">
             <p className="text-primary-foreground/90 text-xs uppercase font-bold">Admin</p>
             <nav className="mt-2">
@@ -203,7 +203,7 @@ export default function Sidebar() {
           <div className="ml-3">
             <p className="text-sm font-medium text-primary-foreground">{user?.name || 'User'}</p>
             <p className="text-xs text-primary-foreground/70">
-              {user?.role === 'super_admin' ? 'Super Admin' : 
+              {user?.role === 'superadmin' ? 'Super Admin' : 
                user?.role === 'admin' ? 'Admin' : 
                user?.role === 'staff_user' ? 'Staff User' : 
                user?.role === 'standard_user' ? 'Standard User' : 'User'}
