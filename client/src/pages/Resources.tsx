@@ -86,15 +86,16 @@ export default function Resources() {
     mutationFn: async (data: ResourceFormData) => {
       const formData = new FormData();
       
-      // Add text fields
+      // Always ensure tags is handled as array
+      const tagsArray = Array.isArray(data.tags) ? data.tags : (data.tags && data.tags !== '' ? [data.tags] : []);
+      formData.append('tags', JSON.stringify(tagsArray));
+      console.log('Sending tags:', tagsArray);
+      
+      // Add other text fields
       Object.entries(data).forEach(([key, value]) => {
         if (key === 'pdfFile' && value instanceof File) {
           formData.append('pdfFile', value);
-        } else if (key === 'tags') {
-          // Handle tags as JSON array
-          const tagsArray = Array.isArray(value) ? value : (value ? [value] : []);
-          formData.append(key, JSON.stringify(tagsArray));
-        } else if (key !== 'pdfFile' && value !== undefined && value !== '') {
+        } else if (key !== 'pdfFile' && key !== 'tags' && value !== undefined && value !== '') {
           formData.append(key, String(value));
         }
       });
@@ -135,15 +136,16 @@ export default function Resources() {
     mutationFn: async ({ id, data }: { id: number; data: Partial<ResourceFormData> }) => {
       const formData = new FormData();
       
-      // Add text fields
+      // Always ensure tags is handled as array
+      const tagsArray = Array.isArray(data.tags) ? data.tags : (data.tags && data.tags !== '' ? [data.tags] : []);
+      formData.append('tags', JSON.stringify(tagsArray));
+      console.log('Sending tags for update:', tagsArray);
+      
+      // Add other text fields
       Object.entries(data).forEach(([key, value]) => {
         if (key === 'pdfFile' && value instanceof File) {
           formData.append('pdfFile', value);
-        } else if (key === 'tags') {
-          // Handle tags as JSON array
-          const tagsArray = Array.isArray(value) ? value : (value ? [value] : []);
-          formData.append(key, JSON.stringify(tagsArray));
-        } else if (key !== 'pdfFile' && value !== undefined && value !== '') {
+        } else if (key !== 'pdfFile' && key !== 'tags' && value !== undefined && value !== '') {
           formData.append(key, String(value));
         }
       });
