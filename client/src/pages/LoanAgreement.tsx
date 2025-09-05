@@ -101,7 +101,14 @@ export default function LoanAgreement() {
   });
 
   // Debug inventory data
-  console.log('Inventory items in LoanAgreement:', inventoryItems);
+  useEffect(() => {
+    if (inventoryItems.length > 0) {
+      console.log('Inventory items loaded:', inventoryItems.length);
+      console.log('Sample item structure:', inventoryItems[0]);
+      const availableItems = inventoryItems.filter(item => (item.quantityAvailable || item.quantity || 0) > 0);
+      console.log('Available items count:', availableItems.length);
+    }
+  }, [inventoryItems]);
 
   // Fetch existing loans for pre-filling
   const { data: loans = [] } = useQuery<any[]>({
@@ -153,7 +160,7 @@ export default function LoanAgreement() {
   // PDF download mutation 
   const downloadPDFMutation = useMutation({
     mutationFn: async (documentId: number) => {
-      const response = await apiRequest('GET', `/api/loan-agreement/download/${documentId}`);
+      const response = await apiRequest('GET', `/api/loan-agreement/${documentId}/download`);
       const blob = await response.blob();
       return blob;
     },
@@ -562,15 +569,28 @@ export default function LoanAgreement() {
                           <SelectValue placeholder="Select inventory item..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {inventoryItems
-                            .filter(item => (item.quantityAvailable || 0) > 0)
-                            .map((item) => (
-                              <SelectItem key={item.itemId} value={item.itemId}>
-                                {item.name} ({item.itemId}) - Available: {item.quantityAvailable || 0}
-                              </SelectItem>
-                            ))
-                          }
-                          {inventoryItems.filter(item => (item.quantityAvailable || 0) > 0).length === 0 && (
+                          {inventoryItems.length > 0 ? (
+                            inventoryItems
+                              .filter(item => {
+                                const hasQuantity = (item.quantityAvailable || item.quantity || 0) > 0;
+                                console.log(`Item ${item.name} (${item.itemId}):`, {
+                                  quantityAvailable: item.quantityAvailable,
+                                  quantity: item.quantity,
+                                  hasQuantity
+                                });
+                                return hasQuantity;
+                              })
+                              .map((item) => (
+                                <SelectItem key={item.itemId} value={item.itemId}>
+                                  {item.name} ({item.itemId}) - Available: {item.quantityAvailable || item.quantity || 0}
+                                </SelectItem>
+                              ))
+                          ) : (
+                            <SelectItem value="" disabled>
+                              Loading items...
+                            </SelectItem>
+                          )}
+                          {inventoryItems.length > 0 && inventoryItems.filter(item => (item.quantityAvailable || item.quantity || 0) > 0).length === 0 && (
                             <SelectItem value="" disabled>
                               No available items
                             </SelectItem>
