@@ -1,0 +1,57 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+2:30:05 PM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 11 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+2:30:14 PM [express] GET /api/auth/me 401 in 2ms :: {"message":"Not authenticated"}
+2:30:20 PM [express] POST /api/auth/login 200 in 190ms :: {"user":{"id":1,"username":"admin","passwo…
+2:30:20 PM [express] GET /api/activity/recent 304 in 37ms :: []
+2:30:20 PM [express] GET /api/inventory/stats 304 in 150ms :: {"counts":{"total":1,"available":1,"lo…
+2:30:20 PM [express] GET /api/inventory 200 in 154ms :: [{"itemId":"BVGJK0001","name":"Prusa i3 MK3S…
+2:30:20 PM [express] GET /api/loans/recent 304 in 186ms :: []
+2:30:28 PM [express] GET /api/auth/me 304 in 33ms :: {"user":{"id":1,"username":"admin","password":"…
+2:30:28 PM [express] GET /api/inventory 200 in 34ms :: [{"itemId":"BVGJK0001","name":"Prusa i3 MK3S+…
+2:30:28 PM [express] GET /api/activity/recent 304 in 35ms :: []
+2:30:28 PM [express] GET /api/loans/recent 304 in 34ms :: []
+2:30:28 PM [express] GET /api/inventory/stats 304 in 33ms :: {"counts":{"total":1,"available":1,"loa…
+2:30:35 PM [express] GET /api/resource-categories 304 in 69ms :: [{"id":1,"name":"General","descript…
+2:30:35 PM [express] GET /api/resources 304 in 68ms :: [{"id":9,"title":"T&A","description":null,"ty…
+2:30:38 PM [express] GET /api/categories/active 200 in 34ms :: [{"id":1,"name":"Fabrication Equipmen…
+2:30:39 PM [express] GET /api/resources 304 in 64ms :: [{"id":9,"title":"T&A","description":null,"ty…
+Error creating resource category: error: duplicate key value violates unique constraint "resource_categories_name_unique"
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async DatabaseStorage.createResourceCategory (/home/runner/workspace/server/storage.ts:1102:24)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:466:24) {
+  length: 246,
+  severity: 'ERROR',
+  code: '23505',
+  detail: 'Key (name)=(Trainings) already exists.',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'resource_categories',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'resource_categories_name_unique',
+  file: 'nbtinsert.c',
+  line: '666',
+  routine: '_bt_check_unique'
+}
+/home/runner/workspace/server/routes.ts:474
+          message: `Category "${categoryData.name}" already exists. Please choose a different name.` 
+                                ^
+
+
+ReferenceError: categoryData is not defined
+    at <anonymous> (/home/runner/workspace/server/routes.ts:474:33)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+Node.js v20.19.3

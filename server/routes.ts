@@ -471,7 +471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle duplicate name constraint
       if (error.code === '23505' && error.constraint === 'resource_categories_name_unique') {
         return res.status(400).json({ 
-          message: `Category "${categoryData.name}" already exists. Please choose a different name.` 
+          message: `Category "${req.body.name}" already exists. Please choose a different name.` 
         });
       }
       
