@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Link } from 'wouter';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required'),
@@ -109,11 +110,20 @@ export default function Login() {
                 type="submit"
                 className="w-full"
                 disabled={isLoading}
+                data-testid="button-login"
               >
                 {isLoading ? 'Logging in...' : 'Log In'}
               </Button>
             </form>
           </Form>
+          
+          <div className="text-center mt-4">
+            <Link href="/forgot-password">
+              <Button variant="link" className="text-sm" data-testid="link-forgot-password">
+                Forgot your password?
+              </Button>
+            </Link>
+          </div>
         </CardContent>
         <CardFooter className="text-center text-sm text-gray-500">
           <p className="w-full">Default credentials: admin / admin123</p>

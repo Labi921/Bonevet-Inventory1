@@ -24,6 +24,7 @@ import { fromZodError } from "zod-validation-error";
 import multer from "multer";
 import path from "path";
 import crypto from "crypto";
+import { hashPassword, comparePassword, validatePasswordStrength } from "./utils/passwordUtils";
 
 const Session = MemoryStore(session);
 
@@ -100,11 +101,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!user) {
           return done(null, false, { message: "Invalid username" });
         }
-        if (user.password !== password) { // In a real app, use proper password hashing
+        
+        // Use bcrypt to compare the password securely
+        const isValidPassword = await comparePassword(password, user.password);
+        if (!isValidPassword) {
           return done(null, false, { message: "Invalid password" });
         }
+        
         return done(null, user);
       } catch (err) {
+        console.error("Error during authentication:", err);
         return done(err);
       }
     })
@@ -259,8 +265,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User not found" });
       }
 
-      // Update password (in production, hash the password)
-      await storage.updateUser(user.id, { password: newPassword });
+      // Validate password strength
+      const passwordValidation = validatePasswordStrength(newPassword);
+      if (!passwordValidation.isValid) {
+        return res.status(400).json({ 
+          message: "Password does not meet security requirements",
+          errors: passwordValidation.errors
+        });
+      }
+      
+      // Hash the new password before storing
+      const hashedPassword = await hashPassword(newPassword);
+      await storage.updateUser(user.id, { password: hashedPassword });
       
       // Mark token as used
       await storage.markPasswordResetTokenUsed(resetToken.id);
@@ -330,7 +346,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingUser) {
         return res.status(400).json({ message: "Username already taken" });
       }
-      const user = await storage.createUser(req.body);
+      
+      // Validate password strength
+      const passwordValidation = validatePasswordStrength(req.body.password);
+      if (!passwordValidation.isValid) {
+        return res.status(400).json({ 
+          message: "Password does not meet security requirements",
+          errors: passwordValidation.errors
+        });
+      }
+      
+      // Hash the password before storing
+      const hashedPassword = await hashPassword(req.body.password);
+      const userData = { ...req.body, password: hashedPassword };
+      const user = await storage.createUser(userData);
       
       // Log the activity
       await storage.createActivityLog({
@@ -365,6 +394,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const targetUser = await storage.getUser(id);
       if (targetUser && targetUser.role === 'superadmin' && currentUser.role === 'admin') {
         return res.status(403).json({ message: "Admin users cannot modify Super Admin accounts" });
+      }
+      
+      // If password is being updated, hash it securely
+      if (validatedData.password) {
+        // Validate password strength
+        const passwordValidation = validatePasswordStrength(validatedData.password);
+        if (!passwordValidation.isValid) {
+          return res.status(400).json({ 
+            message: "Password does not meet security requirements",
+            errors: passwordValidation.errors
+          });
+        }
+        
+        // Hash the new password
+        validatedData.password = await hashPassword(validatedData.password);
       }
       
       const user = await storage.updateUser(id, validatedData);

@@ -21,6 +21,8 @@ import Settings from "@/pages/Settings";
 import AuditLogs from "@/pages/AuditLogs";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/Login";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import CSVImport from "./components/inventory/CSVImport";
 import CategoryManagement from "@/pages/CategoryManagement";
 import LoanAgreement from "@/pages/LoanAgreement";
@@ -29,6 +31,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
       
       <Route path="/">
         <Layout>
