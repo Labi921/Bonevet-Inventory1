@@ -9,7 +9,8 @@ import {
   categories, Category, InsertCategory,
   resources, Resource, InsertResource,
   resourceCategories, ResourceCategory, InsertResourceCategory,
-  resourceAttachments, ResourceAttachment, InsertResourceAttachment
+  resourceAttachments, ResourceAttachment, InsertResourceAttachment,
+  passwordResetTokens, PasswordResetToken, InsertPasswordResetToken
 } from "@shared/schema";
 import { db } from './db';
 import { eq, desc } from 'drizzle-orm';
@@ -23,6 +24,13 @@ export interface IStorage {
   listUsers(): Promise<User[]>;
   updateUser(id: number, userData: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+
+  // Password Reset Operations
+  createPasswordResetToken(tokenData: InsertPasswordResetToken): Promise<PasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
+  markPasswordResetTokenUsed(id: number): Promise<boolean>;
+  deleteExpiredPasswordResetTokens(): Promise<boolean>;
 
   // Inventory Operations
   getInventoryItem(id: number): Promise<InventoryItem | undefined>;
@@ -290,6 +298,27 @@ export class MemStorage implements IStorage {
 
   async deleteUser(id: number): Promise<boolean> {
     return this.users.delete(id);
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    throw new Error("getUserByEmail not implemented in MemStorage");
+  }
+
+  // Password Reset Operations (not implemented in memory storage)
+  async createPasswordResetToken(tokenData: InsertPasswordResetToken): Promise<PasswordResetToken> {
+    throw new Error("Password reset not implemented in MemStorage");
+  }
+
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    throw new Error("Password reset not implemented in MemStorage");
+  }
+
+  async markPasswordResetTokenUsed(id: number): Promise<boolean> {
+    throw new Error("Password reset not implemented in MemStorage");
+  }
+
+  async deleteExpiredPasswordResetTokens(): Promise<boolean> {
+    throw new Error("Password reset not implemented in MemStorage");
   }
 
   // Inventory Operations
@@ -1263,6 +1292,43 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ active: false })
       .where(eq(users.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  // Password Reset Operations
+  async createPasswordResetToken(tokenData: InsertPasswordResetToken): Promise<PasswordResetToken> {
+    const [token] = await db
+      .insert(passwordResetTokens)
+      .values(tokenData)
+      .returning();
+    return token;
+  }
+
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    const [resetToken] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(eq(passwordResetTokens.token, token));
+    return resetToken;
+  }
+
+  async markPasswordResetTokenUsed(id: number): Promise<boolean> {
+    const result = await db
+      .update(passwordResetTokens)
+      .set({ used: true })
+      .where(eq(passwordResetTokens.id, id));
+    return result.rowCount > 0;
+  }
+
+  async deleteExpiredPasswordResetTokens(): Promise<boolean> {
+    const result = await db
+      .delete(passwordResetTokens)
+      .where(eq(passwordResetTokens.used, true));
     return result.rowCount > 0;
   }
 

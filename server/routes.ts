@@ -15,12 +15,15 @@ import {
   insertActivityLogSchema,
   insertCategorySchema,
   insertResourceSchema,
-  userRoleEnum
+  userRoleEnum,
+  passwordResetRequestSchema,
+  passwordResetSchema
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import multer from "multer";
 import path from "path";
+import crypto from "crypto";
 
 const Session = MemoryStore(session);
 
@@ -195,6 +198,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     req.logout(() => {
       res.json({ message: "Logged out successfully" });
     });
+  });
+
+  // Password Reset Routes
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = passwordResetRequestSchema.parse(req.body);
+      
+      // Check if user exists
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        // Don't reveal if email exists or not for security
+        return res.json({ message: "If your email is registered, you will receive a password reset link." });
+      }
+
+      // Generate reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+
+      // Save reset token
+      await storage.createPasswordResetToken({
+        token: resetToken,
+        userId: user.id,
+        expiresAt,
+        used: false
+      });
+
+      // TODO: Send email with reset link
+      // For now, we'll just log it (in production, integrate with email service)
+      console.log(`Password reset link for ${email}: http://localhost:5000/reset-password?token=${resetToken}`);
+
+      res.json({ message: "If your email is registered, you will receive a password reset link." });
+    } catch (error) {
+      console.error("Error in forgot-password:", error);
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: fromZodError(error).message });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, newPassword } = passwordResetSchema.parse(req.body);
+      
+      // Find and validate token
+      const resetToken = await storage.getPasswordResetToken(token);
+      if (!resetToken) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+
+      // Check if token is expired or used
+      if (resetToken.used || new Date() > resetToken.expiresAt) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+
+      // Get user
+      const user = await storage.getUser(resetToken.userId);
+      if (!user) {
+        return res.status(400).json({ message: "User not found" });
+      }
+
+      // Update password (in production, hash the password)
+      await storage.updateUser(user.id, { password: newPassword });
+      
+      // Mark token as used
+      await storage.markPasswordResetTokenUsed(resetToken.id);
+
+      // Log activity
+      await storage.createActivityLog({
+        userId: user.id,
+        action: "Password Reset",
+        entityType: "User",
+        entityId: user.id.toString(),
+        details: "Password was reset using email verification"
+      });
+
+      res.json({ message: "Password reset successfully. You can now log in with your new password." });
+    } catch (error) {
+      console.error("Error in reset-password:", error);
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: fromZodError(error).message });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   app.get("/api/auth/me", (req, res) => {

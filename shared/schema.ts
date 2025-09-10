@@ -4,7 +4,7 @@ import { z } from "zod";
 
 // User roles enum
 export const userRoleEnum = z.enum([
-  "super_admin",
+  "superadmin",
   "admin", 
   "standard_user",
   "staff_user"
@@ -35,6 +35,35 @@ export const insertUserSchema = createInsertSchema(users).pick({
 }).extend({
   role: userRoleEnum,
 });
+
+// Password Reset Tokens Model
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  token: text("token").notNull().unique(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens)
+  .omit({ id: true, createdAt: true });
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+
+// Password Reset Request Schema
+export const passwordResetRequestSchema = z.object({
+  email: z.string().email("Valid email is required"),
+});
+
+export const passwordResetSchema = z.object({
+  token: z.string().min(1, "Reset token is required"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export type PasswordResetRequest = z.infer<typeof passwordResetRequestSchema>;
+export type PasswordReset = z.infer<typeof passwordResetSchema>;
 
 // Resources table for manuals, videos, and documents
 export const resources = pgTable("resources", {
