@@ -119,6 +119,42 @@ export default function DocumentList({ documents, isLoading }: DocumentListProps
       });
     }
   };
+
+  // Download PDF function for borrowing requests
+  const downloadBorrowingRequestPDF = async (documentId: string) => {
+    try {
+      const response = await fetch(`/api/borrowing-request/${documentId}/download`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `Borrowing_Request_${documentId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Download Started",
+        description: "PDF download has started successfully."
+      });
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: "Failed to download the PDF document.",
+        variant: "destructive"
+      });
+    }
+  };
   
   // Check if user already signed a document
   const isDocumentSignedByUser = (document: any) => {
@@ -220,6 +256,18 @@ export default function DocumentList({ documents, isLoading }: DocumentListProps
                           variant="outline" 
                           size="sm" 
                           onClick={() => downloadLoanAgreementPDF(doc.id)}
+                          className="text-green-600 hover:text-green-700"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          PDF
+                        </Button>
+                      )}
+                      
+                      {doc.type === 'Borrowing Request' && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => downloadBorrowingRequestPDF(doc.id)}
                           className="text-green-600 hover:text-green-700"
                         >
                           <Download className="h-4 w-4 mr-2" />

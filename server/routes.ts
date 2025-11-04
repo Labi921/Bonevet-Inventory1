@@ -2329,6 +2329,242 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Borrowing Request PDF Generation endpoint
+  app.post("/api/borrowing-request/generate", requireAuth, async (req, res) => {
+    try {
+      const {
+        centerName,
+        centerContact,
+        centerAddress,
+        requestedItems,
+        borrowingPurpose,
+        requestedDate,
+        expectedReturnDate,
+        contactPerson,
+        contactPhone,
+        contactEmail,
+        notes,
+        urgencyLevel
+      } = req.body;
+
+      // Validate required fields
+      if (!centerName || !centerContact || !centerAddress || !requestedItems || 
+          !borrowingPurpose || !requestedDate || !expectedReturnDate || 
+          !contactPerson || !contactEmail) {
+        return res.status(400).json({ 
+          message: "Missing required fields for borrowing request" 
+        });
+      }
+
+      // Generate a unique document ID
+      const now = new Date();
+      const year = now.getFullYear();
+      const documentCounter = (await storage.listDocuments()).filter(doc => doc.type === 'Borrowing Request').length + 1;
+      const documentId = `BR-${year}-${documentCounter.toString().padStart(3, '0')}`;
+
+      // Create document record with PDF data
+      const borrowingDocument = await storage.createDocument({
+        title: `Borrowing Request to ${centerName} - ${requestedDate}`,
+        type: "Borrowing Request",
+        documentId: documentId,
+        relatedItemId: centerName,
+        content: JSON.stringify({
+          centerName,
+          centerContact,
+          centerAddress,
+          requestedItems,
+          borrowingPurpose,
+          requestedDate,
+          expectedReturnDate,
+          contactPerson,
+          contactPhone,
+          contactEmail,
+          notes,
+          urgencyLevel
+        })
+      });
+
+      // Log the activity
+      await storage.createActivityLog({
+        userId: (req.user as any).id,
+        action: "Create",
+        entityType: "Document",
+        entityId: borrowingDocument.id.toString(),
+        details: `Created borrowing request to ${centerName} for ${requestedItems.length} item(s)`
+      });
+
+      res.json({
+        success: true,
+        message: "Borrowing request created successfully",
+        documentId: borrowingDocument.id
+      });
+
+    } catch (error: any) {
+      console.error('Error creating borrowing request:', error);
+      res.status(500).json({ message: "Failed to create borrowing request" });
+    }
+  });
+
+  // Borrowing Request PDF Download endpoint
+  app.get('/api/borrowing-request/:documentId/download', requireAuth, async (req, res) => {
+    try {
+      const { documentId } = req.params;
+      
+      // Get document from storage
+      const documents = await storage.listDocuments();
+      const document = documents.find(doc => doc.id.toString() === documentId);
+      if (!document || document.type !== 'Borrowing Request') {
+        return res.status(404).json({ message: 'Document not found' });
+      }
+
+      // Parse document content
+      const requestData = JSON.parse(document.content);
+      
+      // Use PDFKit for PDF generation
+      const PDFDocument = (await import('pdfkit')).default;
+      const doc = new PDFDocument({ size: 'A4', margin: 50 });
+      
+      // Collect PDF data in buffer
+      const buffers: Buffer[] = [];
+      doc.on('data', buffers.push.bind(buffers));
+      
+      const margin = 50;
+      const pageWidth = 595;
+      const contentWidth = pageWidth - (margin * 2);
+      
+      // Header
+      doc.fontSize(18).font('Helvetica-Bold')
+         .text('BORROWING REQUEST', { align: 'center' });
+      doc.moveDown(0.5);
+      doc.fontSize(12).font('Helvetica')
+         .text('Equipment Borrowing Request Form', { align: 'center' });
+      doc.moveDown(1.5);
+      
+      // FROM section
+      doc.fontSize(14).font('Helvetica-Bold');
+      doc.text('FROM:', margin);
+      doc.moveDown(0.5);
+      doc.fontSize(11).font('Helvetica');
+      doc.text('BONEVET Gjakova', margin);
+      doc.text('Address: Vëllezërit Frashëri, pn', margin);
+      doc.text('Email: gjakova@bonevet.org', margin);
+      doc.text('Tel: +383 (0) 49 187 800', margin);
+      doc.moveDown(1);
+      
+      // TO section
+      doc.fontSize(14).font('Helvetica-Bold');
+      doc.text('TO:', margin);
+      doc.moveDown(0.5);
+      doc.fontSize(11).font('Helvetica');
+      doc.text(`Center Name: ${requestData.centerName}`, margin);
+      doc.text(`Address: ${requestData.centerAddress}`, margin);
+      doc.text(`Contact: ${requestData.centerContact}`, margin);
+      doc.moveDown(1);
+      
+      // Request Details
+      doc.fontSize(14).font('Helvetica-Bold');
+      doc.text('REQUEST DETAILS', margin);
+      doc.moveDown(0.5);
+      doc.fontSize(11).font('Helvetica');
+      doc.text(`Purpose: ${requestData.borrowingPurpose}`, margin);
+      doc.text(`Requested Date: ${requestData.requestedDate}`, margin);
+      doc.text(`Expected Return Date: ${requestData.expectedReturnDate}`, margin);
+      doc.text(`Urgency Level: ${requestData.urgencyLevel}`, margin);
+      doc.moveDown(1);
+      
+      // Contact Person
+      doc.fontSize(14).font('Helvetica-Bold');
+      doc.text('CONTACT PERSON', margin);
+      doc.moveDown(0.5);
+      doc.fontSize(11).font('Helvetica');
+      doc.text(`Name: ${requestData.contactPerson}`, margin);
+      doc.text(`Phone: ${requestData.contactPhone || 'N/A'}`, margin);
+      doc.text(`Email: ${requestData.contactEmail}`, margin);
+      doc.moveDown(1.5);
+      
+      // Requested Items Table
+      doc.fontSize(14).font('Helvetica-Bold');
+      doc.text('REQUESTED ITEMS', margin);
+      doc.moveDown(0.8);
+      
+      const tableStartY = doc.y;
+      const rowHeight = 25;
+      const colWidths = [40, 160, 70, 225];
+      const colX = [
+        margin,
+        margin + colWidths[0],
+        margin + colWidths[0] + colWidths[1],
+        margin + colWidths[0] + colWidths[1] + colWidths[2]
+      ];
+      
+      // Table header
+      doc.rect(margin, tableStartY, contentWidth, rowHeight).fillAndStroke('#e5e7eb', '#000');
+      doc.fillColor('#000').font('Helvetica-Bold').fontSize(10);
+      
+      const headerY = tableStartY + 8;
+      doc.text('Nr', colX[0] + 5, headerY);
+      doc.text('Item Name', colX[1] + 5, headerY);
+      doc.text('Quantity', colX[2] + 5, headerY);
+      doc.text('Specifications / Purpose', colX[3] + 5, headerY);
+      
+      // Table rows
+      doc.font('Helvetica').fontSize(9);
+      let currentRowY = tableStartY + rowHeight;
+      
+      requestData.requestedItems.forEach((item: any, index: number) => {
+        doc.rect(margin, currentRowY, contentWidth, rowHeight).stroke();
+        
+        const textY = currentRowY + 5;
+        doc.text(`${index + 1}`, colX[0] + 5, textY);
+        doc.text(item.itemName.substring(0, 30), colX[1] + 5, textY);
+        doc.text(item.quantity.toString(), colX[2] + 15, textY);
+        const specs = item.specifications ? `${item.specifications} / ${item.purpose}` : item.purpose;
+        doc.text(specs.substring(0, 45), colX[3] + 5, textY, { width: colWidths[3] - 10 });
+        
+        currentRowY += rowHeight;
+      });
+      
+      doc.y = currentRowY + 20;
+      
+      // Additional Notes
+      if (requestData.notes) {
+        doc.fontSize(12).font('Helvetica-Bold');
+        doc.text('ADDITIONAL NOTES', margin);
+        doc.moveDown(0.5);
+        doc.fontSize(10).font('Helvetica');
+        doc.text(requestData.notes, { width: contentWidth, align: 'justify' });
+        doc.moveDown(1);
+      }
+      
+      doc.moveDown(2);
+      
+      // Footer
+      doc.fontSize(9).font('Helvetica');
+      doc.text(`Document ID: ${document.documentId}`, margin, { align: 'center' });
+      doc.text(`Generated by BONEVET Inventory Management System`, { align: 'center' });
+      doc.text(`Date: ${new Date().toLocaleDateString()}`, { align: 'center' });
+      
+      // Finish the PDF
+      doc.end();
+      
+      // Create promise to wait for PDF completion
+      const pdfBuffer = await new Promise<Buffer>((resolve) => {
+        doc.on('end', () => {
+          resolve(Buffer.concat(buffers));
+        });
+      });
+
+      // Set headers for PDF download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="Borrowing_Request_${documentId}.pdf"`);
+      res.send(pdfBuffer);
+      
+    } catch (error: any) {
+      console.error('Error generating borrowing request PDF:', error);
+      res.status(500).json({ message: 'Failed to generate PDF' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
