@@ -14,7 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { PlusCircle, Edit, Trash2, Users as UsersIcon } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Users as UsersIcon, Key } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 
 const userSchema = z.object({
@@ -58,6 +58,7 @@ export default function Users() {
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [resettingPasswordUser, setResettingPasswordUser] = useState<User | null>(null);
   
   // Get available roles based on current user
   const getAvailableRoles = () => {
@@ -141,6 +142,28 @@ export default function Users() {
     },
   });
 
+  // Reset password mutation
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ id, newPassword }: { id: number; newPassword: string }) => {
+      return await apiRequest('POST', `/api/users/${id}/reset-password`, { newPassword });
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Success',
+        description: 'Password reset successfully',
+      });
+      setResettingPasswordUser(null);
+      passwordResetForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to reset password',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const createForm = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
     defaultValues: {
@@ -155,6 +178,29 @@ export default function Users() {
 
   const editForm = useForm<Partial<UserFormData>>({
     resolver: zodResolver(userSchema.partial()),
+  });
+
+  const passwordResetSchema = z.object({
+    newPassword: z.string()
+      .min(8, 'Password must be at least 8 characters')
+      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+      .regex(/[0-9]/, 'Password must contain at least one number')
+      .regex(/[!@#$%^&*(),.?":{}|<>]/, 'Password must contain at least one special character'),
+    confirmPassword: z.string(),
+  }).refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
+
+  type PasswordResetFormData = z.infer<typeof passwordResetSchema>;
+
+  const passwordResetForm = useForm<PasswordResetFormData>({
+    resolver: zodResolver(passwordResetSchema),
+    defaultValues: {
+      newPassword: '',
+      confirmPassword: '',
+    },
   });
 
   const onCreateSubmit = (data: UserFormData) => {
@@ -207,6 +253,19 @@ export default function Users() {
       return false;
     }
     return true;
+  };
+
+  const onPasswordResetSubmit = (data: PasswordResetFormData) => {
+    if (!resettingPasswordUser) return;
+    resetPasswordMutation.mutate({ 
+      id: resettingPasswordUser.id, 
+      newPassword: data.newPassword 
+    });
+  };
+
+  const handlePasswordReset = (user: User) => {
+    setResettingPasswordUser(user);
+    passwordResetForm.reset();
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -403,12 +462,24 @@ export default function Users() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-1 justify-end">
+                        {currentUser?.role === 'superadmin' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handlePasswordReset(user)}
+                            title="Reset password"
+                            data-testid={`button-reset-password-${user.id}`}
+                          >
+                            <Key className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEdit(user)}
                           disabled={!canEditUser(user)}
                           title={!canEditUser(user) ? 'Cannot edit Super Admin accounts' : 'Edit user'}
+                          data-testid={`button-edit-${user.id}`}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -419,6 +490,7 @@ export default function Users() {
                           disabled={!canDeleteUser(user)}
                           title={!canDeleteUser(user) ? 'Cannot delete Super Admin accounts' : 'Delete user'}
                           className="text-red-600 hover:text-red-700 disabled:text-gray-400"
+                          data-testid={`button-delete-${user.id}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -436,6 +508,72 @@ export default function Users() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Password Reset Dialog */}
+        <Dialog open={!!resettingPasswordUser} onOpenChange={() => setResettingPasswordUser(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Reset Password</DialogTitle>
+            </DialogHeader>
+            {resettingPasswordUser && (
+              <div className="mb-4">
+                <p className="text-sm text-muted-foreground">
+                  Reset password for <strong>{resettingPasswordUser.name}</strong> (@{resettingPasswordUser.username})
+                </p>
+              </div>
+            )}
+            <Form {...passwordResetForm}>
+              <form onSubmit={passwordResetForm.handleSubmit(onPasswordResetSubmit)} className="space-y-4">
+                <FormField
+                  control={passwordResetForm.control}
+                  name="newPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>New Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" {...field} data-testid="input-new-password" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={passwordResetForm.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" {...field} data-testid="input-confirm-password" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-3">
+                  <p className="text-xs text-amber-800 dark:text-amber-200">
+                    <strong>Password requirements:</strong>
+                    <ul className="list-disc list-inside mt-1 space-y-0.5">
+                      <li>At least 8 characters</li>
+                      <li>One uppercase letter</li>
+                      <li>One lowercase letter</li>
+                      <li>One number</li>
+                      <li>One special character</li>
+                    </ul>
+                  </p>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setResettingPasswordUser(null)} data-testid="button-cancel-reset">
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={resetPasswordMutation.isPending} data-testid="button-submit-reset">
+                    {resetPasswordMutation.isPending ? 'Resetting...' : 'Reset Password'}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
 
         {/* Edit User Dialog */}
         <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>

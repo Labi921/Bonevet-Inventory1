@@ -469,6 +469,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Superadmin-only password reset endpoint
+  app.post("/api/users/:id/reset-password", async (req, res) => {
+    try {
+      // Only superadmin can reset passwords
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const currentUser = req.user as any;
+      if (currentUser.role !== 'superadmin') {
+        return res.status(403).json({ message: "Only Super Admin can reset user passwords" });
+      }
+
+      const id = parseInt(req.params.id);
+      const { newPassword } = req.body;
+
+      if (!newPassword) {
+        return res.status(400).json({ message: "New password is required" });
+      }
+
+      // Validate password strength
+      const passwordValidation = validatePasswordStrength(newPassword);
+      if (!passwordValidation.isValid) {
+        return res.status(400).json({ 
+          message: "Password does not meet security requirements",
+          errors: passwordValidation.errors
+        });
+      }
+
+      // Get the target user
+      const targetUser = await storage.getUser(id);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Hash the new password
+      const hashedPassword = await hashPassword(newPassword);
+      
+      // Update the user's password
+      await storage.updateUser(id, { password: hashedPassword });
+
+      // Log the activity
+      await storage.createActivityLog({
+        userId: currentUser.id,
+        action: "Update",
+        entityType: "User",
+        entityId: id.toString(),
+        details: `Reset password for user: ${targetUser.username}`
+      });
+
+      res.json({ message: "Password reset successfully" });
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
   // Standard User and above middleware for resources
   const requireStandardUserOrAbove = (req: Request, res: Response, next: any) => {
     if (!req.isAuthenticated()) {
