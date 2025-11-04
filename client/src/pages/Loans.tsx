@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Download, Search, Package, Users, Eye, FileText, FileSignature } from 'lucide-react';
+import { PlusCircle, Download, Search, Package, Users, Eye, FileText, FileSignature, Building2 } from 'lucide-react';
 import { format, isAfter, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -221,6 +221,11 @@ export default function Loans() {
       <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between pb-3">
         <CardTitle className="text-lg font-medium">Loan Management</CardTitle>
         <div className="mt-3 sm:mt-0 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+          <Button asChild variant="outline">
+            <a href="/borrowing-request">
+              <Building2 className="h-4 w-4 mr-2" /> Borrowing Request
+            </a>
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button>
