@@ -347,6 +347,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Username already taken" });
       }
       
+      // Check for duplicate email
+      const existingEmail = await storage.getUserByEmail(req.body.email);
+      if (existingEmail) {
+        return res.status(400).json({ message: "Email address already in use" });
+      }
+      
       // Validate password strength
       const passwordValidation = validatePasswordStrength(req.body.password);
       if (!passwordValidation.isValid) {
@@ -371,8 +377,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.status(201).json({ ...user, password: undefined });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating user:", error);
+      
+      // Handle database constraint violations
+      if (error.code === '23505') {
+        if (error.constraint === 'users_email_unique') {
+          return res.status(400).json({ message: "Email address already in use" });
+        }
+        if (error.constraint === 'users_username_unique') {
+          return res.status(400).json({ message: "Username already taken" });
+        }
+      }
+      
       res.status(500).json({ message: "Failed to create user" });
     }
   });
