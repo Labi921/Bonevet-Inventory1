@@ -820,6 +820,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Organization Settings routes
+  app.get("/api/settings", requireAuth, async (req, res) => {
+    try {
+      const settings = await storage.getAllSettings();
+      // Set default values if not found
+      const defaults = {
+        organizationName: 'BONEVET Gjakova',
+        organizationPrefix: 'BVGJK',
+        contactEmail: 'admin@bonevet.org',
+        enableNotifications: 'true',
+        enableAuditLogs: 'true'
+      };
+      res.json({ ...defaults, ...settings });
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+      res.status(500).json({ message: "Failed to fetch settings" });
+    }
+  });
+
+  app.put("/api/settings", requireAuth, async (req, res) => {
+    try {
+      const currentUser = req.user as any;
+      // Only admin and superadmin can update settings
+      if (!['admin', 'superadmin'].includes(currentUser.role)) {
+        return res.status(403).json({ message: "Only administrators can update settings" });
+      }
+
+      const { organizationName, organizationPrefix, contactEmail, enableNotifications, enableAuditLogs } = req.body;
+      
+      // Update each setting
+      if (organizationName !== undefined) {
+        await storage.setSetting('organizationName', organizationName);
+      }
+      if (organizationPrefix !== undefined) {
+        await storage.setSetting('organizationPrefix', organizationPrefix);
+      }
+      if (contactEmail !== undefined) {
+        await storage.setSetting('contactEmail', contactEmail);
+      }
+      if (enableNotifications !== undefined) {
+        await storage.setSetting('enableNotifications', String(enableNotifications));
+      }
+      if (enableAuditLogs !== undefined) {
+        await storage.setSetting('enableAuditLogs', String(enableAuditLogs));
+      }
+
+      const updatedSettings = await storage.getAllSettings();
+      res.json(updatedSettings);
+    } catch (error) {
+      console.error("Error updating settings:", error);
+      res.status(500).json({ message: "Failed to update settings" });
+    }
+  });
+
   // Inventory routes
   app.get("/api/inventory", requireAuth, async (req, res) => {
     try {

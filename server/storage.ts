@@ -10,7 +10,8 @@ import {
   resources, Resource, InsertResource,
   resourceCategories, ResourceCategory, InsertResourceCategory,
   resourceAttachments, ResourceAttachment, InsertResourceAttachment,
-  passwordResetTokens, PasswordResetToken, InsertPasswordResetToken
+  passwordResetTokens, PasswordResetToken, InsertPasswordResetToken,
+  organizationSettings, OrganizationSetting
 } from "@shared/schema";
 import { db } from './db';
 import { eq, desc } from 'drizzle-orm';
@@ -112,6 +113,11 @@ export interface IStorage {
   listResourceCategories(): Promise<ResourceCategory[]>;
   listActiveResourceCategories(): Promise<ResourceCategory[]>;
   updateResourceCategory(id: number, categoryData: Partial<InsertResourceCategory>): Promise<ResourceCategory | undefined>;
+
+  // Organization Settings Operations
+  getSetting(key: string): Promise<string | undefined>;
+  setSetting(key: string, value: string): Promise<OrganizationSetting>;
+  getAllSettings(): Promise<Record<string, string>>;
   deleteResourceCategory(id: number): Promise<boolean>;
 }
 
@@ -1070,6 +1076,19 @@ export class MemStorage implements IStorage {
   async deleteResourceCategory(id: number): Promise<boolean> {
     throw new Error("Resource categories not implemented in MemStorage");
   }
+
+  // Organization Settings Operations (not implemented in memory storage)
+  async getSetting(key: string): Promise<string | undefined> {
+    throw new Error("Settings not implemented in MemStorage");
+  }
+
+  async setSetting(key: string, value: string): Promise<OrganizationSetting> {
+    throw new Error("Settings not implemented in MemStorage");
+  }
+
+  async getAllSettings(): Promise<Record<string, string>> {
+    throw new Error("Settings not implemented in MemStorage");
+  }
 }
 
 // Database Storage Implementation
@@ -1380,6 +1399,39 @@ export class DatabaseStorage implements IStorage {
   async updateCategory(id: number, categoryData: Partial<InsertCategory>): Promise<Category | undefined> { return memStorage.updateCategory(id, categoryData); }
   async deleteCategory(id: number): Promise<boolean> { return memStorage.deleteCategory(id); }
   async reorderCategories(categoryIds: number[]): Promise<Category[]> { return memStorage.reorderCategories(categoryIds); }
+
+  // Organization Settings Operations
+  async getSetting(key: string): Promise<string | undefined> {
+    const [setting] = await db.select().from(organizationSettings).where(eq(organizationSettings.settingKey, key));
+    return setting?.settingValue;
+  }
+
+  async setSetting(key: string, value: string): Promise<OrganizationSetting> {
+    const existing = await this.getSetting(key);
+    if (existing !== undefined) {
+      const [updated] = await db
+        .update(organizationSettings)
+        .set({ settingValue: value, updatedAt: new Date() })
+        .where(eq(organizationSettings.settingKey, key))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(organizationSettings)
+        .values({ settingKey: key, settingValue: value })
+        .returning();
+      return created;
+    }
+  }
+
+  async getAllSettings(): Promise<Record<string, string>> {
+    const settings = await db.select().from(organizationSettings);
+    const result: Record<string, string> = {};
+    for (const setting of settings) {
+      result[setting.settingKey] = setting.settingValue;
+    }
+    return result;
+  }
 }
 
 // Create instances

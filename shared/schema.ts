@@ -36,6 +36,20 @@ export const insertUserSchema = createInsertSchema(users).pick({
   role: userRoleEnum,
 });
 
+// Organization Settings Model
+export const organizationSettings = pgTable("organization_settings", {
+  id: serial("id").primaryKey(),
+  settingKey: text("setting_key").notNull().unique(),
+  settingValue: text("setting_value").notNull(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertOrganizationSettingSchema = createInsertSchema(organizationSettings)
+  .omit({ id: true, updatedAt: true });
+
+export type OrganizationSetting = typeof organizationSettings.$inferSelect;
+export type InsertOrganizationSetting = z.infer<typeof insertOrganizationSettingSchema>;
+
 // Password Reset Tokens Model
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: serial("id").primaryKey(),
