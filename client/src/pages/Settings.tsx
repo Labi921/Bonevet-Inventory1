@@ -37,7 +37,7 @@ import { Monitor, Moon, Sun } from 'lucide-react';
 // Settings form schema
 const generalSettingsSchema = z.object({
   organizationName: z.string().min(1, "Organization name is required"),
-  organizationPrefix: z.string().min(1, "Prefix is required").max(5, "Prefix cannot be longer than 5 characters"),
+  organizationPrefix: z.string().min(1, "Prefix is required").max(10, "Prefix cannot be longer than 10 characters"),
   contactEmail: z.string().email("Must be a valid email"),
   enableNotifications: z.boolean().default(true),
   enableAuditLogs: z.boolean().default(true)
