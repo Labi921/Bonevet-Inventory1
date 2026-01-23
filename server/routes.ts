@@ -1020,10 +1020,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Create new item
             // Generate itemId if not provided
             if (!item.itemId) {
+              // Get organization prefix from settings
+              const orgPrefix = await storage.getSetting('organizationPrefix') || 'BVGJK';
               const lastId = existingItems.length > 0 
-                ? Math.max(...existingItems.map(inv => parseInt(inv.itemId.replace("BVGJK", "")) || 0))
+                ? Math.max(...existingItems.map(inv => parseInt(inv.itemId.replace(orgPrefix, "")) || 0))
                 : 0;
-              item.itemId = `BVGJK${String(lastId + 1).padStart(4, "0")}`;
+              item.itemId = `${orgPrefix}${String(lastId + 1).padStart(4, "0")}`;
             }
             
             // Ensure quantity is properly converted to number
@@ -1111,13 +1113,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate the form data
       const validatedData = insertInventoryItemSchema.parse(formData);
       
-      // Generate a unique BVGJK#### ID if not provided
+      // Generate a unique ID with organization prefix if not provided
       if (!validatedData.itemId) {
+        // Get organization prefix from settings
+        const orgPrefix = await storage.getSetting('organizationPrefix') || 'BVGJK';
         const items = await storage.listInventoryItems();
         const lastId = items.length > 0 
-          ? parseInt(items[items.length - 1].itemId.replace("BVGJK", "")) 
+          ? parseInt(items[items.length - 1].itemId.replace(orgPrefix, "")) 
           : 0;
-        validatedData.itemId = `BVGJK${String(lastId + 1).padStart(4, "0")}`;
+        validatedData.itemId = `${orgPrefix}${String(lastId + 1).padStart(4, "0")}`;
       }
       
       // Add image path if uploaded

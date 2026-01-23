@@ -1,5 +1,7 @@
 import { useAuth } from '@/hooks/useAuth';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 import { 
   Card, 
   CardContent, 
@@ -94,6 +96,11 @@ export default function Settings() {
     );
   }
   
+  // Fetch settings from backend
+  const { data: settings, isLoading: settingsLoading } = useQuery<Record<string, string>>({
+    queryKey: ['/api/settings'],
+  });
+
   // General settings form
   const generalForm = useForm<z.infer<typeof generalSettingsSchema>>({
     resolver: zodResolver(generalSettingsSchema),
@@ -105,14 +112,45 @@ export default function Settings() {
       enableAuditLogs: true
     }
   });
+
+  // Update form when settings are loaded
+  useEffect(() => {
+    if (settings) {
+      generalForm.reset({
+        organizationName: settings.organizationName || 'BONEVET Gjakova',
+        organizationPrefix: settings.organizationPrefix || 'BVGJK',
+        contactEmail: settings.contactEmail || 'admin@bonevet.org',
+        enableNotifications: settings.enableNotifications === 'true',
+        enableAuditLogs: settings.enableAuditLogs === 'true'
+      });
+    }
+  }, [settings, generalForm]);
+
+  // Save settings mutation
+  const saveSettings = useMutation({
+    mutationFn: async (values: z.infer<typeof generalSettingsSchema>) => {
+      const response = await apiRequest('PUT', '/api/settings', values);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
+      toast({
+        title: "Settings Updated",
+        description: "Your settings have been saved successfully."
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save settings. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
   
   // Handle form submissions
   const onGeneralSubmit = (values: z.infer<typeof generalSettingsSchema>) => {
-    console.log("General settings:", values);
-    toast({
-      title: "Settings Updated",
-      description: "Your settings have been saved successfully."
-    });
+    saveSettings.mutate(values);
   };
   
   return (
