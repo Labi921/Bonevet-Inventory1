@@ -125,9 +125,6 @@ export default function Login() {
             </Link>
           </div>
         </CardContent>
-        <CardFooter className="text-center text-sm text-gray-500">
-          <p className="w-full">Default credentials: admin / admin123</p>
-        </CardFooter>
       </Card>
     </div>
   );
