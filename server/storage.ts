@@ -1289,8 +1289,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(id: number): Promise<boolean> {
     const result = await db
-      .update(users)
-      .set({ active: false })
+      .delete(users)
       .where(eq(users.id, id));
     return result.rowCount > 0;
   }
