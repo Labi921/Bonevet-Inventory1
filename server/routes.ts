@@ -1022,9 +1022,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!item.itemId) {
               // Get organization prefix from settings
               const orgPrefix = await storage.getSetting('organizationPrefix') || 'BVGJK';
-              const lastId = existingItems.length > 0 
-                ? Math.max(...existingItems.map(inv => parseInt(inv.itemId.replace(orgPrefix, "")) || 0))
-                : 0;
+              // Filter items with matching prefix and extract numeric suffixes
+              const matchingItems = existingItems.filter(inv => inv.itemId.startsWith(orgPrefix));
+              const numericSuffixes = matchingItems
+                .map(inv => parseInt(inv.itemId.replace(orgPrefix, ""), 10))
+                .filter(num => !isNaN(num));
+              const lastId = numericSuffixes.length > 0 ? Math.max(...numericSuffixes) : 0;
               item.itemId = `${orgPrefix}${String(lastId + 1).padStart(4, "0")}`;
             }
             
@@ -1118,9 +1121,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get organization prefix from settings
         const orgPrefix = await storage.getSetting('organizationPrefix') || 'BVGJK';
         const items = await storage.listInventoryItems();
-        const lastId = items.length > 0 
-          ? parseInt(items[items.length - 1].itemId.replace(orgPrefix, "")) 
-          : 0;
+        // Filter items with matching prefix and extract numeric suffixes
+        const matchingItems = items.filter(inv => inv.itemId.startsWith(orgPrefix));
+        const numericSuffixes = matchingItems
+          .map(inv => parseInt(inv.itemId.replace(orgPrefix, ""), 10))
+          .filter(num => !isNaN(num));
+        const lastId = numericSuffixes.length > 0 ? Math.max(...numericSuffixes) : 0;
         validatedData.itemId = `${orgPrefix}${String(lastId + 1).padStart(4, "0")}`;
       }
       
