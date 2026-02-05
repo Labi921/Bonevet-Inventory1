@@ -31,8 +31,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useTheme } from '@/contexts/ThemeContext';
-import { Monitor, Moon, Sun } from 'lucide-react';
 
 // Settings form schema
 const generalSettingsSchema = z.object({
@@ -43,41 +41,6 @@ const generalSettingsSchema = z.object({
   enableAuditLogs: z.boolean().default(true)
 });
 
-function ThemeSelector() {
-  const { theme, setTheme } = useTheme();
-
-  return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium">Theme</label>
-      <div className="grid grid-cols-3 gap-2">
-        <Button
-          variant={theme === "light" ? "default" : "outline"}
-          className="h-auto p-3 flex flex-col items-center gap-2"
-          onClick={() => setTheme("light")}
-        >
-          <Sun className="h-4 w-4" />
-          <span className="text-xs">Light</span>
-        </Button>
-        <Button
-          variant={theme === "dark" ? "default" : "outline"}
-          className="h-auto p-3 flex flex-col items-center gap-2"
-          onClick={() => setTheme("dark")}
-        >
-          <Moon className="h-4 w-4" />
-          <span className="text-xs">Dark</span>
-        </Button>
-        <Button
-          variant={theme === "system" ? "default" : "outline"}
-          className="h-auto p-3 flex flex-col items-center gap-2"
-          onClick={() => setTheme("system")}
-        >
-          <Monitor className="h-4 w-4" />
-          <span className="text-xs">System</span>
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 export default function Settings() {
   const { user } = useAuth(); // Use general auth hook instead of role-specific
@@ -165,7 +128,6 @@ export default function Settings() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="advanced">Advanced</TabsTrigger>
         </TabsList>
@@ -260,46 +222,6 @@ export default function Settings() {
                   </div>
                 </form>
               </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="appearance" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Appearance</CardTitle>
-              <CardDescription>
-                Customize the look and feel of the application
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <ThemeSelector />
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Primary Color</label>
-                  <div className="flex flex-wrap gap-2">
-                    {['blue', 'green', 'purple', 'orange', 'red'].map((color) => (
-                      <div 
-                        key={color}
-                        className={`w-8 h-8 rounded-full cursor-pointer border-2 ${color === 'blue' ? 'border-blue-600' : 'border-transparent'}`}
-                        style={{ 
-                          backgroundColor: 
-                            color === 'blue' ? '#3B82F6' : 
-                            color === 'green' ? '#10B981' : 
-                            color === 'purple' ? '#8B5CF6' : 
-                            color === 'orange' ? '#F59E0B' : 
-                            '#EF4444' 
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="flex justify-end">
-                  <Button>Apply Changes</Button>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
