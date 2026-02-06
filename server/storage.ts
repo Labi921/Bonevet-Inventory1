@@ -223,20 +223,6 @@ export class MemStorage implements IStorage {
       isActive: true
     });
     
-    // Add some sample inventory items for testing
-    this.createInventoryItem({
-      itemId: "BVGJK0001",
-      name: "Prusa i3 MK3S+",
-      model: "MK3S+",
-      category: "Fabrication Equipment",
-      status: "Available",
-      location: "Main Workshop",
-      quantity: 1,
-      price: 899,
-      usage: "None",
-      notes: "3D Printer"
-    });
-
     // Initialize default categories
     this.initializeDefaultCategories();
   }
